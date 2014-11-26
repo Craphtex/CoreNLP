@@ -38,6 +38,8 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.Random;
 
+import org.apache.commons.lang3.ArrayUtils;
+
 import static java.util.stream.Collectors.toList;
 
 /**
@@ -837,7 +839,24 @@ public class DependencyParser {
 
     Configuration c = system.initialConfiguration(sentence);
     while (!system.isTerminal(c)) {
-      double[] scores = classifier.computeScores(getFeatureArray(c));
+      // Get feature array
+      int[] featArr = getFeatureArray(c);
+
+      double[][] E1 = classifier.getE();
+      Double[][] E = new Double[E1.length][];
+      for(int i = 0; i < E1.length; i++)
+        E[i] = ArrayUtils.toObject(E1[i]);
+
+      HashMap<Integer, Double[]> s = new HashMap<>();
+
+      List<CoreLabel> labels = sentence.get(CoreAnnotations.TokensAnnotation.class);
+      for (CoreLabel label : labels) {
+        Integer id = getWordID(label.word());
+        if (id == null) System.err.println("FUUUU!");
+        s.put(id, E[id]);
+      }
+      
+      double[] scores = classifier.computeScores(featArr,s);
 
       double optScore = Double.NEGATIVE_INFINITY;
       String optTrans = null;
