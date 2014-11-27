@@ -203,5 +203,32 @@ class Util {
   {
     printTreeStats("", trees);
   }
+  
+  public static Double[] createMeanValueTweak(List<CoreLabel> sentence, CoreLabel current, double[][] embeddings, DependencyParser dp){
+//    int[] sentence;
+//    int current;
+    Double[] embedding = new Double[embeddings[0].length];
+    for (int i = 0; i < embedding.length; i++) {
+    	embedding[i] = 0.0;
+    }
+    int ctr = 0;
+    int index = 0;
+    for (CoreLabel label : sentence) {
+//    for (int i = 0; i < sentence.length; i++) {
+//      if (!label.equals(current)) {
+//      if (sentence[i] != current) {
+        index = dp.getWordID(label.word());
+        for (int j = 0; j < embedding.length; j++) {
+          embedding[j] += embeddings[index][j];
+//          embedding[j] += embeddings[sentence[i]][j];
+        }
+        ctr++;
+//      }
+    }
+    for (int j = 0; j < embedding.length; j++) {
+      embedding[j] /= ctr;
+    }
+    return embedding;
+  }
 
 }
