@@ -834,25 +834,32 @@ public class DependencyParser {
    */
   private DependencyTree predictInner(CoreMap sentence) {
     int numTrans = system.transitions.size();
+    
+    double[][] E1 = classifier.getE();
+    Double[][] E = new Double[E1.length][];
+    for(int i = 0; i < E1.length; i++) {
+      E[i] = new Double[E1[i].length];
+      for(int j = 0; j < E1[i].length; j++)
+        E[i][j] = E1[i][j];
+    }
+
+    HashMap<Integer, Double[]> s = new HashMap<>();
+
+    List<CoreLabel> labels = sentence.get(CoreAnnotations.TokensAnnotation.class);
+    int i = 0;
+    for (CoreLabel label : labels) {
+      Double[] embedding = Util.createMeanValueTweak(labels, i++, E1, this);
+      if (embedding != null) {
+        Integer id = getWordID(label.word());
+        s.put(id, embedding);
+      }
+    }
 
     Configuration c = system.initialConfiguration(sentence);
+    
     while (!system.isTerminal(c)) {
 
-      double[][] E1 = classifier.getE();
-      Double[][] E = new Double[E1.length][];
-      for(int i = 0; i < E1.length; i++) {
-        E[i] = new Double[E1[i].length];
-        for(int j = 0; j < E1[i].length; j++)
-          E[i][j] = E1[i][j];
-      }
-
-      HashMap<Integer, Double[]> s = new HashMap<>();
-
-      List<CoreLabel> labels = sentence.get(CoreAnnotations.TokensAnnotation.class);
-      for (CoreLabel label : labels) {
-        Integer id = getWordID(label.word());
-        s.put(id, Util.createMeanValueTweak(labels, label, E1, this));
-      }
+      
       
       double[] scores = classifier.computeScores(getFeatureArray(c),s);
 
@@ -866,7 +873,8 @@ public class DependencyParser {
         }
       }
       if (optTrans == null) {
-    	  System.err.println("Oups!");
+    	  System.err.println("[Forcing sentence with one word] " + sentence.size());
+//    	  optTrans = "S";
       }
       system.apply(c, optTrans);
     }
