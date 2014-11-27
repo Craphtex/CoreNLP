@@ -1,6 +1,7 @@
 package edu.stanford.nlp.parser.nndep;
 
 import edu.stanford.nlp.util.CollectionUtils;
+import edu.stanford.nlp.util.CoreMap;
 import edu.stanford.nlp.util.Pair;
 import edu.stanford.nlp.util.concurrent.MulticoreWrapper;
 import edu.stanford.nlp.util.concurrent.ThreadsafeProcessor;
@@ -674,30 +675,36 @@ public class Classifier {
         .currentTimeMillis() - startTime) / 1000.0 + " (s)");
   }
 
-  double[] computeScores(int[] feature) {
-    return computeScores(feature, preMap);
+  double[] computeScores(int[] feature, HashMap<Integer,Double[]> sentence) {
+    return computeScores(feature, preMap, sentence);
   }
 
   /**
    * Feed a feature vector forward through the network. Returns the
    * values of the output layer.
    */
-  private double[] computeScores(int[] feature, Map<Integer, Integer> preMap) {
+  private double[] computeScores(int[] feature, Map<Integer, Integer> preMap, HashMap<Integer,Double[]> sentence) {
     double[] hidden = new double[config.hiddenSize];
     int offset = 0;
     for (int j = 0; j < feature.length; ++j) {
       int tok = feature[j];
-      int index = tok * config.numTokens + j;
+//      int index = tok * config.numTokens + j;
 
-      if (preMap.containsKey(index)) {
-        int id = preMap.get(index);
-        for (int i = 0; i < config.hiddenSize; ++i)
-          hidden[i] += saved[id][i];
-      } else {
+//      if (preMap.containsKey(index)) {
+//        int id = preMap.get(index);
+//        for (int i = 0; i < config.hiddenSize; ++i)
+//          hidden[i] += saved[id][i];
+//      } else {
         for (int i = 0; i < config.hiddenSize; ++i)
           for (int k = 0; k < config.embeddingSize; ++k)
-            hidden[i] += W1[i][offset + k] * E[tok][k];
-      }
+            if (sentence.containsKey(tok)) {
+              // current feature is a word
+              hidden[i] += W1[i][offset + k] * sentence.get(tok)[k];
+            }
+            else {
+              hidden[i] += W1[i][offset + k] * E[tok][k];
+            }
+//      }
       offset += config.embeddingSize;
     }
 
