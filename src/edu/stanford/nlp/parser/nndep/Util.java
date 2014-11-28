@@ -204,8 +204,8 @@ class Util {
     printTreeStats("", trees);
   }
   
-  public static Double[] createMeanValueTweak(List<CoreLabel> sentence, int current, double[][] embeddings, DependencyParser dp){
-    if (sentence.size() == 1) return null;
+  public static Double[] createMeanValueTweak(List<CoreLabel> sentence, int current, double[][] embeddings, DependencyParser dp) throws TweakException{
+    if (sentence.size() == 1) throw new TweakException();
     Double[] embedding = new Double[embeddings[0].length];
     for (int i = 0; i < embedding.length; i++) {
     	embedding[i] = 0.0;
@@ -227,5 +227,36 @@ class Util {
     }
     return embedding;
   }
+  
+  public static Double[] createPOSWeightTweak(List<CoreLabel> sentence, int current, double[][] embeddings, DependencyParser dp) throws TweakException{
+    if (sentence.size() == 1) throw new TweakException();
+    Double[] embedding = new Double[embeddings[0].length];
+    for (int i = 0; i < embedding.length; i++) {
+    	embedding[i] = 0.0;
+    }
+    int ctr = 0;
+    int index = 0;
+    int i = 0;
+    for (CoreLabel label : sentence) {
+      if (current != i++) {
+        index = dp.getWordID(label.word());
+        for (int j = 0; j < embedding.length; j++) {
+          embedding[j] += embeddings[index][j];
+          // Proper way of doing this is to use a HashMap with weights.
+          if (label.tag().startsWith("NN") || label.tag().startsWith("VB")) {
+            embedding[j] += embeddings[index][j];
+            ctr++;
+          }
+        }
+        ctr++;
+      }
+    }
+    for (int j = 0; j < embedding.length; j++) {
+      embedding[j] /= ctr;
+    }
+    return embedding;
+  }
+  
+  public static class TweakException extends Exception {}
 
 }
