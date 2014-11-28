@@ -185,8 +185,9 @@ public class Config
    * {@link edu.stanford.nlp.tagger.maxent.MaxentTagger}.
    */
   public String tagger = MaxentTagger.DEFAULT_JAR_PATH;
-  
+
   public boolean featureMean = false;
+  public boolean featurePOS = false;
 
   public Config(Properties properties) {
     setProperties(properties);
@@ -226,6 +227,9 @@ public class Config
       for (String s : PropertiesUtils.getStringArray(props, "features")) {
         if (s.equals("mean")) {
           featureMean = true;
+        }
+        else if (s.equals("pos")) {
+          featurePOS = true;
         }
       }
     }

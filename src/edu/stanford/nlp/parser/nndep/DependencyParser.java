@@ -31,6 +31,7 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.Writer;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
@@ -836,7 +837,7 @@ public class DependencyParser {
     int numTrans = system.transitions.size();
     HashMap<Integer, Double[]> s = new HashMap<>();
     
-    if (config.featureMean) {
+    if (config.featureMean || config.featurePOS) {
       double[][] E1 = classifier.getE();
       Double[][] E = new Double[E1.length][];
       for(int i = 0; i < E1.length; i++) {
@@ -848,8 +849,33 @@ public class DependencyParser {
       List<CoreLabel> labels = sentence.get(CoreAnnotations.TokensAnnotation.class);
       int i = 0;
       for (CoreLabel label : labels) {
-        Double[] embedding = Util.createMeanValueTweak(labels, i++, E1, this);
-        if (embedding != null) {
+        int ctr = 0;
+        Double[] embedding = new Double[E1[0].length];
+        Arrays.fill(embedding, 0.0);
+        if (config.featureMean) {
+          int j = 0;
+          try {
+            for (Double d : Util.createMeanValueTweak(labels, i++, E1, this)) {
+              embedding[j++] += d;
+            }
+            ctr++;
+          }
+          catch (Util.TweakException e) {}
+        }
+        if (config.featurePOS) {
+          int j = 0;
+          try {
+            for (Double d : Util.createPOSWeightTweak(labels, i++, E1, this)) {
+              embedding[j++] += d;
+            }
+            ctr++;
+          }
+          catch (Util.TweakException e) {}
+        }
+        if (ctr != 0) {
+          for (int j = 0; j < embedding.length; j++) {
+            embedding[j] /= ctr;
+          }
           Integer id = getWordID(label.word());
           s.put(id, embedding);
         }
