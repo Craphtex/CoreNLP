@@ -1153,6 +1153,7 @@ public class DependencyParser {
    *   <tr><td><tt>&#8209;textFile</tt></td><td>No</td><td>Yes (or <tt>testFile</tt>)</td><td>Path to a plaintext file containing sentences to be parsed.</td></tr>
    *   <tr><td><tt>&#8209;testFile</tt></td><td>No</td><td>Yes (or <tt>textFile</tt>)</td><td>Path to a test-set treebank in <a href="http://ilk.uvt.nl/conll/#dataformat">CoNLL-X format</a> for final evaluation of the parser.</td></tr>
    *   <tr><td><tt>&#8209;trainFile</tt></td><td>Yes</td><td>No</td><td>Path to a training treebank in <a href="http://ilk.uvt.nl/conll/#dataformat">CoNLL-X format</a></td></tr>
+   *   <tr><td><tt>&#8209;feature</tt></td><td>Optional</td><td>Optional</td><td>Select what semantic features to use. Is passed as a comma separated list with one or more features names. Currently available features: <i>mean</i> and <i>pos</i></td></tr>
    * </table>
    *
    * Training options:
