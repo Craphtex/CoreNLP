@@ -186,6 +186,9 @@ public class Config
    */
   public String tagger = MaxentTagger.DEFAULT_JAR_PATH;
 
+  public boolean featureMean = false;
+  public boolean featurePOS = false;
+
   public Config(Properties properties) {
     setProperties(properties);
   }
@@ -219,6 +222,17 @@ public class Config
                ? getLanguage(props.getProperty("language"))
                : language;
     tlp = Languages.getLanguageParams(language).treebankLanguagePack();
+    
+    if (props.containsKey("features")) {
+      for (String s : PropertiesUtils.getStringArray(props, "features")) {
+        if (s.equals("mean")) {
+          featureMean = true;
+        }
+        else if (s.equals("pos")) {
+          featurePOS = true;
+        }
+      }
+    }
   }
 
   /**

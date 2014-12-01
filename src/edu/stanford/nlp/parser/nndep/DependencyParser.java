@@ -31,6 +31,7 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.Writer;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
@@ -834,10 +835,51 @@ public class DependencyParser {
    */
   private DependencyTree predictInner(CoreMap sentence) {
     int numTrans = system.transitions.size();
+    HashMap<Integer, double[]> s = new HashMap<>();
+    
+    if (config.featureMean || config.featurePOS) {
+      double[][] E = classifier.getE();
+
+      List<CoreLabel> labels = sentence.get(CoreAnnotations.TokensAnnotation.class);
+      int i = 0;
+      for (CoreLabel label : labels) {
+        int ctr = 0;
+        double[] embedding = new double[E[0].length];
+        Arrays.fill(embedding, 0.0);
+        if (config.featureMean) {
+          int j = 0;
+          try {
+            for (double d : Util.createMeanValueTweak(labels, i++, E, this)) {
+              embedding[j++] += d;
+            }
+            ctr++;
+          }
+          catch (Util.TweakException e) {}
+        }
+        if (config.featurePOS) {
+          int j = 0;
+          try {
+            for (double d : Util.createPOSWeightTweak(labels, i++, E, this)) {
+              embedding[j++] += d;
+            }
+            ctr++;
+          }
+          catch (Util.TweakException e) {}
+        }
+        if (ctr != 0) {
+          for (int j = 0; j < embedding.length; j++) {
+            embedding[j] /= ctr;
+          }
+          Integer id = getWordID(label.word());
+          s.put(id, embedding);
+        }
+      }
+    }
 
     Configuration c = system.initialConfiguration(sentence);
+    
     while (!system.isTerminal(c)) {
-      double[] scores = classifier.computeScores(getFeatureArray(c));
+      double[] scores = classifier.computeScores(getFeatureArray(c),s);
 
       double optScore = Double.NEGATIVE_INFINITY;
       String optTrans = null;
@@ -1111,6 +1153,7 @@ public class DependencyParser {
    *   <tr><td><tt>&#8209;textFile</tt></td><td>No</td><td>Yes (or <tt>testFile</tt>)</td><td>Path to a plaintext file containing sentences to be parsed.</td></tr>
    *   <tr><td><tt>&#8209;testFile</tt></td><td>No</td><td>Yes (or <tt>textFile</tt>)</td><td>Path to a test-set treebank in <a href="http://ilk.uvt.nl/conll/#dataformat">CoNLL-X format</a> for final evaluation of the parser.</td></tr>
    *   <tr><td><tt>&#8209;trainFile</tt></td><td>Yes</td><td>No</td><td>Path to a training treebank in <a href="http://ilk.uvt.nl/conll/#dataformat">CoNLL-X format</a></td></tr>
+   *   <tr><td><tt>&#8209;feature</tt></td><td>Optional</td><td>Optional</td><td>Select what semantic features to use. Is passed as a comma separated list with one or more features names. Currently available features: <i>mean</i> and <i>pos</i></td></tr>
    * </table>
    *
    * Training options:
