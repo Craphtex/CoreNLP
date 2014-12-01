@@ -204,9 +204,9 @@ class Util {
     printTreeStats("", trees);
   }
   
-  public static Double[] createMeanValueTweak(List<CoreLabel> sentence, int current, double[][] embeddings, DependencyParser dp) throws TweakException{
+  public static double[] createMeanValueTweak(List<CoreLabel> sentence, int current, double[][] embeddings, DependencyParser dp) throws TweakException{
     if (sentence.size() == 1) throw new TweakException();
-    Double[] embedding = new Double[embeddings[0].length];
+    double[] embedding = new double[embeddings[0].length];
     for (int i = 0; i < embedding.length; i++) {
     	embedding[i] = 0.0;
     }
@@ -228,9 +228,9 @@ class Util {
     return embedding;
   }
   
-  public static Double[] createPOSWeightTweak(List<CoreLabel> sentence, int current, double[][] embeddings, DependencyParser dp) throws TweakException{
+  public static double[] createPOSWeightTweak(List<CoreLabel> sentence, int current, double[][] embeddings, DependencyParser dp) throws TweakException{
     if (sentence.size() == 1) throw new TweakException();
-    Double[] embedding = new Double[embeddings[0].length];
+    double[] embedding = new double[embeddings[0].length];
     for (int i = 0; i < embedding.length; i++) {
     	embedding[i] = 0.0;
     }

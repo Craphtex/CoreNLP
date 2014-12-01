@@ -835,27 +835,21 @@ public class DependencyParser {
    */
   private DependencyTree predictInner(CoreMap sentence) {
     int numTrans = system.transitions.size();
-    HashMap<Integer, Double[]> s = new HashMap<>();
+    HashMap<Integer, double[]> s = new HashMap<>();
     
     if (config.featureMean || config.featurePOS) {
-      double[][] E1 = classifier.getE();
-      Double[][] E = new Double[E1.length][];
-      for(int i = 0; i < E1.length; i++) {
-        E[i] = new Double[E1[i].length];
-        for(int j = 0; j < E1[i].length; j++)
-          E[i][j] = E1[i][j];
-      }
+      double[][] E = classifier.getE();
 
       List<CoreLabel> labels = sentence.get(CoreAnnotations.TokensAnnotation.class);
       int i = 0;
       for (CoreLabel label : labels) {
         int ctr = 0;
-        Double[] embedding = new Double[E1[0].length];
+        double[] embedding = new double[E[0].length];
         Arrays.fill(embedding, 0.0);
         if (config.featureMean) {
           int j = 0;
           try {
-            for (Double d : Util.createMeanValueTweak(labels, i++, E1, this)) {
+            for (double d : Util.createMeanValueTweak(labels, i++, E, this)) {
               embedding[j++] += d;
             }
             ctr++;
@@ -865,7 +859,7 @@ public class DependencyParser {
         if (config.featurePOS) {
           int j = 0;
           try {
-            for (Double d : Util.createPOSWeightTweak(labels, i++, E1, this)) {
+            for (double d : Util.createPOSWeightTweak(labels, i++, E, this)) {
               embedding[j++] += d;
             }
             ctr++;
@@ -885,9 +879,6 @@ public class DependencyParser {
     Configuration c = system.initialConfiguration(sentence);
     
     while (!system.isTerminal(c)) {
-
-      
-      
       double[] scores = classifier.computeScores(getFeatureArray(c),s);
 
       double optScore = Double.NEGATIVE_INFINITY;
@@ -898,10 +889,6 @@ public class DependencyParser {
           optScore = scores[j];
           optTrans = system.transitions.get(j);
         }
-      }
-      if (optTrans == null) {
-    	  System.err.println("[Forcing sentence with one word] " + sentence.size());
-//    	  optTrans = "S";
       }
       system.apply(c, optTrans);
     }
