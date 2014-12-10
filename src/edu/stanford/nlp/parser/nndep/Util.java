@@ -17,6 +17,7 @@ import edu.stanford.nlp.stats.Counter;
 import edu.stanford.nlp.stats.Counters;
 import edu.stanford.nlp.stats.IntCounter;
 import edu.stanford.nlp.util.CoreMap;
+
 import java.util.*;
 import java.io.*;
 
@@ -202,6 +203,46 @@ class Util {
   public static void printTreeStats(List<DependencyTree> trees)
   {
     printTreeStats("", trees);
+  }
+  
+  public static Map<Integer, double[]> getReplacementFeatures(List<CoreLabel> labels, double[][] E, boolean mean, boolean pos, DependencyParser dp) {
+    HashMap<Integer, double[]> sentence = new HashMap<>();
+    if (mean || pos) {
+      int i = 0;
+      for (CoreLabel label : labels) {
+        int ctr = 0;
+        double[] embedding = new double[E[0].length];
+        Arrays.fill(embedding, 0.0);
+        if (mean) {
+          int j = 0;
+          try {
+            for (double d : Util.createMeanValueTweak(labels, i++, E, dp)) {
+              embedding[j++] += d;
+            }
+            ctr++;
+          }
+          catch (Util.TweakException e) {}
+        }
+        if (pos) {
+          int j = 0;
+          try {
+            for (double d : Util.createPOSWeightTweak(labels, i++, E, dp)) {
+              embedding[j++] += d;
+            }
+            ctr++;
+          }
+          catch (Util.TweakException e) {}
+        }
+        if (ctr != 0) {
+          for (int j = 0; j < embedding.length; j++) {
+            embedding[j] /= ctr;
+          }
+          Integer id = dp.getWordID(label.word());
+          sentence.put(id, embedding);
+        }
+      }
+    }
+    return sentence;
   }
   
   public static double[] createMeanValueTweak(List<CoreLabel> sentence, int current, double[][] embeddings, DependencyParser dp) throws TweakException{

@@ -186,8 +186,10 @@ public class Config
    */
   public String tagger = MaxentTagger.DEFAULT_JAR_PATH;
 
-  public boolean featureMean = false;
-  public boolean featurePOS = false;
+  public boolean featureReplaceWithMean = false;
+  public boolean featureReplaceWithPOS = false;
+  public boolean featureAddMean = false;
+  public boolean featureAddPOS = false;
 
   public Config(Properties properties) {
     setProperties(properties);
@@ -226,10 +228,10 @@ public class Config
     if (props.containsKey("features")) {
       for (String s : PropertiesUtils.getStringArray(props, "features")) {
         if (s.equals("mean")) {
-          featureMean = true;
+          featureReplaceWithMean = true;
         }
         else if (s.equals("pos")) {
-          featurePOS = true;
+          featureReplaceWithPOS = true;
         }
       }
     }

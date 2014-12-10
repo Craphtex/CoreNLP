@@ -835,46 +835,7 @@ public class DependencyParser {
    */
   private DependencyTree predictInner(CoreMap sentence) {
     int numTrans = system.transitions.size();
-    HashMap<Integer, double[]> s = new HashMap<>();
-    
-    if (config.featureMean || config.featurePOS) {
-      double[][] E = classifier.getE();
-
-      List<CoreLabel> labels = sentence.get(CoreAnnotations.TokensAnnotation.class);
-      int i = 0;
-      for (CoreLabel label : labels) {
-        int ctr = 0;
-        double[] embedding = new double[E[0].length];
-        Arrays.fill(embedding, 0.0);
-        if (config.featureMean) {
-          int j = 0;
-          try {
-            for (double d : Util.createMeanValueTweak(labels, i++, E, this)) {
-              embedding[j++] += d;
-            }
-            ctr++;
-          }
-          catch (Util.TweakException e) {}
-        }
-        if (config.featurePOS) {
-          int j = 0;
-          try {
-            for (double d : Util.createPOSWeightTweak(labels, i++, E, this)) {
-              embedding[j++] += d;
-            }
-            ctr++;
-          }
-          catch (Util.TweakException e) {}
-        }
-        if (ctr != 0) {
-          for (int j = 0; j < embedding.length; j++) {
-            embedding[j] /= ctr;
-          }
-          Integer id = getWordID(label.word());
-          s.put(id, embedding);
-        }
-      }
-    }
+    Map<Integer, double[]> s = Util.getReplacementFeatures(sentence.get(CoreAnnotations.TokensAnnotation.class), classifier.getE(), config.featureReplaceWithMean, config.featureReplaceWithPOS, this);
 
     Configuration c = system.initialConfiguration(sentence);
     

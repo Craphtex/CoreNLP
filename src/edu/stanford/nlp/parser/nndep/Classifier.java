@@ -675,7 +675,7 @@ public class Classifier {
         .currentTimeMillis() - startTime) / 1000.0 + " (s)");
   }
 
-  double[] computeScores(int[] feature, HashMap<Integer,double[]> sentence) {
+  double[] computeScores(int[] feature, Map<Integer,double[]> sentence) {
     return computeScores(feature, preMap, sentence);
   }
 
@@ -683,7 +683,7 @@ public class Classifier {
    * Feed a feature vector forward through the network. Returns the
    * values of the output layer.
    */
-  private double[] computeScores(int[] feature, Map<Integer, Integer> preMap, HashMap<Integer,double[]> sentence) {
+  private double[] computeScores(int[] feature, Map<Integer, Integer> preMap, Map<Integer,double[]> sentence) {
     double[] hidden = new double[config.hiddenSize];
     int offset = 0;
     for (int j = 0; j < feature.length; ++j) {
