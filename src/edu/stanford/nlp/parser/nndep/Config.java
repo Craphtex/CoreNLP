@@ -190,6 +190,7 @@ public class Config
   public boolean featureReplaceWithPOS = false;
   public boolean featureAddMean = false;
   public boolean featureAddPOS = false;
+  public boolean featureNoWordEmbeddingBackPropagation = false;
 
   public Config(Properties properties) {
     setProperties(properties);
@@ -232,6 +233,9 @@ public class Config
         }
         else if (s.equals("pos")) {
           featureReplaceWithPOS = true;
+        }
+        else if (s.equals("nowebackprop")) {
+          featureNoWordEmbeddingBackPropagation = true;
         }
       }
     }

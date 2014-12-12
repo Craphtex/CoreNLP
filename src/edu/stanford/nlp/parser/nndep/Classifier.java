@@ -591,7 +591,12 @@ public class Classifier {
       }
     }
 
-    for (int i = 0; i < E.length; ++i) {
+    int to = E.length;
+    int from = 0;
+    if (config.featureNoWordEmbeddingBackPropagation) {
+      from = 35936; //Magic number for certain embedding.
+    }
+    for (int i = from; i < E.length; ++i) {
       for (int j = 0; j < E[i].length; ++j) {
         eg2E[i][j] += gradE[i][j] * gradE[i][j];
         E[i][j] -= adaAlpha * gradE[i][j] / Math.sqrt(eg2E[i][j] + adaEps);
