@@ -680,7 +680,7 @@ public class Classifier {
         .currentTimeMillis() - startTime) / 1000.0 + " (s)");
   }
 
-  double[] computeScores(int[] feature, Map<Integer,double[]> sentence) {
+  double[] computeScores(List<Integer> feature, Map<Integer,double[]> sentence) {
     return computeScores(feature, preMap, sentence);
   }
 
@@ -688,18 +688,18 @@ public class Classifier {
    * Feed a feature vector forward through the network. Returns the
    * values of the output layer.
    */
-  private double[] computeScores(int[] feature, Map<Integer, Integer> preMap, Map<Integer,double[]> sentence) {
+  private double[] computeScores(List<Integer> feature, Map<Integer, Integer> preMap, Map<Integer,double[]> sentence) {
     double[] hidden = new double[config.hiddenSize];
     int offset = 0;
-    for (int j = 0; j < feature.length; ++j) {
-      int tok = feature[j];
-//      int index = tok * config.numTokens + j;
+    for (int j = 0; j < feature.size(); ++j) {
+      int tok = feature.get(j);
+      int index = tok * config.numTokens + j;
 
-//      if (preMap.containsKey(index)) {
-//        int id = preMap.get(index);
-//        for (int i = 0; i < config.hiddenSize; ++i)
-//          hidden[i] += saved[id][i];
-//      } else {
+      if (!sentence.containsKey(tok) && preMap.containsKey(index)) {
+        int id = preMap.get(index);
+        for (int i = 0; i < config.hiddenSize; ++i)
+          hidden[i] += saved[id][i];
+      } else {
         for (int i = 0; i < config.hiddenSize; ++i)
           for (int k = 0; k < config.embeddingSize; ++k)
             if (sentence.containsKey(tok)) {
@@ -709,7 +709,7 @@ public class Classifier {
             else {
               hidden[i] += W1[i][offset + k] * E[tok][k];
             }
-//      }
+      }
       offset += config.embeddingSize;
     }
 

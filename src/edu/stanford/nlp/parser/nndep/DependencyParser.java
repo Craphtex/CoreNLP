@@ -216,6 +216,7 @@ public class DependencyParser {
   private static final int STACK_OFFSET = 6;
   private static final int STACK_NUMBER = 6;
 
+  /*
   private int[] getFeatureArray(Configuration c) {
     int[] feature = new int[config.numTokens];  // positions 0-17 hold fWord, 18-35 hold fPos, 36-47 hold fLabel
 
@@ -267,6 +268,7 @@ public class DependencyParser {
 
     return feature;
   }
+  */
 
   public Dataset genTrainExamples(List<CoreMap> sents, List<DependencyTree> trees) {
     Dataset ret = new Dataset(config.numTokens, system.transitions.size());
@@ -840,7 +842,7 @@ public class DependencyParser {
     Configuration c = system.initialConfiguration(sentence);
     
     while (!system.isTerminal(c)) {
-      double[] scores = classifier.computeScores(getFeatureArray(c),s);
+      double[] scores = classifier.computeScores(getFeatures(c),s);
 
       double optScore = Double.NEGATIVE_INFINITY;
       String optTrans = null;
