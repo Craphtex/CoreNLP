@@ -383,10 +383,10 @@ public class DependencyParser {
     knownLabels.add(0, Config.NULL);
     generateIDs();
 
-    System.out.println(Config.SEPARATOR);
-    System.out.println("#Word: " + knownWords.size());
-    System.out.println("#POS:" + knownPos.size());
-    System.out.println("#Label: " + knownLabels.size());
+    System.err.println(Config.SEPARATOR);
+    System.err.println("#Word: " + knownWords.size());
+    System.err.println("#POS:" + knownPos.size());
+    System.err.println("#Label: " + knownLabels.size());
   }
 
   public void writeModelFile(String modelFile) {
