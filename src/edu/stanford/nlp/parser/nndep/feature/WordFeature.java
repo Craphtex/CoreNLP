@@ -1,15 +1,38 @@
 package edu.stanford.nlp.parser.nndep.feature;
 
-public class WordFeature implements Feature {
+import java.util.List;
+
+import edu.stanford.nlp.ling.CoreLabel;
+
+public class WordFeature extends Feature {
 
 	private int id;
+	private double[] embedding;
+	private boolean meanTweak;
+	private boolean posTweak;
 
 	public WordFeature(int id) {
 		this.id = id;
 	}
 
-	public double[] getEmbedding(double[][] embedding) {
-		return embedding[id];
+	public void applyMeanTweak(List<CoreLabel> sentence) {
+		
+	}
+
+	public void applyPOSTweak(List<CoreLabel> sentence) {
+		
+	}
+
+	public void loadEmbedding(double[][] embedding) {
+		this.embedding = embedding[id];
+	}
+
+	public double[] getEmbedding() {
+		return embedding;
+	}
+
+	public int getId() {
+		return id;
 	}
 
 }

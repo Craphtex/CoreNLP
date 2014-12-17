@@ -2,20 +2,22 @@ package edu.stanford.nlp.parser.nndep;
 
 import java.util.List;
 
+import edu.stanford.nlp.parser.nndep.feature.Feature;
+
 /**
  * @author Christopher Manning
  */
 class Example {
 
-  private final List<Integer> feature;
+  private final List<Feature> feature;
   private final List<Integer> label;
 
-  public Example(List<Integer> feature, List<Integer> label) {
+  public Example(List<Feature> feature, List<Integer> label) {
     this.feature = feature;
     this.label = label;
   }
 
-  public List<Integer> getFeature() {
+  public List<Feature> getFeature() {
     return feature;
   }
 

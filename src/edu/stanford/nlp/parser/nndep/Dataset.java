@@ -11,6 +11,8 @@ package edu.stanford.nlp.parser.nndep;
 import java.util.ArrayList;
 import java.util.List;
 
+import edu.stanford.nlp.parser.nndep.feature.Feature;
+
 /**
  * Defines a list of training / testing examples in multi-class classification setting.
  *
@@ -30,7 +32,7 @@ public class Dataset {
     examples = new ArrayList<Example>();
   }
 
-  public void addExample(List<Integer> feature, List<Integer> label) {
+  public void addExample(List<Feature> feature, List<Integer> label) {
     Example data = new Example(feature, label);
     n += 1;
     examples.add(data);

@@ -9,6 +9,10 @@ import edu.stanford.nlp.ling.HasWord;
 import edu.stanford.nlp.ling.IndexedWord;
 import edu.stanford.nlp.ling.TaggedWord;
 import edu.stanford.nlp.ling.Word;
+import edu.stanford.nlp.parser.nndep.feature.ArcFeature;
+import edu.stanford.nlp.parser.nndep.feature.Feature;
+import edu.stanford.nlp.parser.nndep.feature.POSFeature;
+import edu.stanford.nlp.parser.nndep.feature.WordFeature;
 import edu.stanford.nlp.process.DocumentPreprocessor;
 import edu.stanford.nlp.stats.Counter;
 import edu.stanford.nlp.stats.Counters;
@@ -156,55 +160,55 @@ public class DependencyParser {
     return labelIDs.get(s);
   }
 
-  public List<Integer> getFeatures(Configuration c) {
+  public List<Feature> getFeatures(Configuration c) {
     // Presize the arrays for very slight speed gain. Hardcoded, but so is the current feature list.
-    List<Integer> fWord = new ArrayList<Integer>(18);
-    List<Integer> fPos = new ArrayList<Integer>(18);
-    List<Integer> fLabel = new ArrayList<Integer>(12);
+    List<Feature> fWord = new ArrayList<Feature>(18);
+    List<Feature> fPos = new ArrayList<Feature>(18);
+    List<Feature> fLabel = new ArrayList<Feature>(12);
     for (int j = 2; j >= 0; --j) {
       int index = c.getStack(j);
-      fWord.add(getWordID(c.getWord(index)));
-      fPos.add(getPosID(c.getPOS(index)));
+      fWord.add(new WordFeature(getWordID(c.getWord(index))));
+      fPos.add(new POSFeature(getPosID(c.getPOS(index))));
     }
     for (int j = 0; j <= 2; ++j) {
       int index = c.getBuffer(j);
-      fWord.add(getWordID(c.getWord(index)));
-      fPos.add(getPosID(c.getPOS(index)));
+      fWord.add(new WordFeature(getWordID(c.getWord(index))));
+      fPos.add(new POSFeature(getPosID(c.getPOS(index))));
     }
     for (int j = 0; j <= 1; ++j) {
       int k = c.getStack(j);
       int index = c.getLeftChild(k);
-      fWord.add(getWordID(c.getWord(index)));
-      fPos.add(getPosID(c.getPOS(index)));
-      fLabel.add(getLabelID(c.getLabel(index)));
+      fWord.add(new WordFeature(getWordID(c.getWord(index))));
+      fPos.add(new POSFeature(getPosID(c.getPOS(index))));
+      fLabel.add(new ArcFeature(getLabelID(c.getLabel(index))));
 
       index = c.getRightChild(k);
-      fWord.add(getWordID(c.getWord(index)));
-      fPos.add(getPosID(c.getPOS(index)));
-      fLabel.add(getLabelID(c.getLabel(index)));
+      fWord.add(new WordFeature(getWordID(c.getWord(index))));
+      fPos.add(new POSFeature(getPosID(c.getPOS(index))));
+      fLabel.add(new ArcFeature(getLabelID(c.getLabel(index))));
 
       index = c.getLeftChild(k, 2);
-      fWord.add(getWordID(c.getWord(index)));
-      fPos.add(getPosID(c.getPOS(index)));
-      fLabel.add(getLabelID(c.getLabel(index)));
+      fWord.add(new WordFeature(getWordID(c.getWord(index))));
+      fPos.add(new POSFeature(getPosID(c.getPOS(index))));
+      fLabel.add(new ArcFeature(getLabelID(c.getLabel(index))));
 
       index = c.getRightChild(k, 2);
-      fWord.add(getWordID(c.getWord(index)));
-      fPos.add(getPosID(c.getPOS(index)));
-      fLabel.add(getLabelID(c.getLabel(index)));
+      fWord.add(new WordFeature(getWordID(c.getWord(index))));
+      fPos.add(new POSFeature(getPosID(c.getPOS(index))));
+      fLabel.add(new ArcFeature(getLabelID(c.getLabel(index))));
 
       index = c.getLeftChild(c.getLeftChild(k));
-      fWord.add(getWordID(c.getWord(index)));
-      fPos.add(getPosID(c.getPOS(index)));
-      fLabel.add(getLabelID(c.getLabel(index)));
+      fWord.add(new WordFeature(getWordID(c.getWord(index))));
+      fPos.add(new POSFeature(getPosID(c.getPOS(index))));
+      fLabel.add(new ArcFeature(getLabelID(c.getLabel(index))));
 
       index = c.getRightChild(c.getRightChild(k));
-      fWord.add(getWordID(c.getWord(index)));
-      fPos.add(getPosID(c.getPOS(index)));
-      fLabel.add(getLabelID(c.getLabel(index)));
+      fWord.add(new WordFeature(getWordID(c.getWord(index))));
+      fPos.add(new POSFeature(getPosID(c.getPOS(index))));
+      fLabel.add(new ArcFeature(getLabelID(c.getLabel(index))));
     }
 
-    List<Integer> feature = new ArrayList<>(48);
+    List<Feature> feature = new ArrayList<>(48);
     feature.addAll(fWord);
     feature.addAll(fPos);
     feature.addAll(fLabel);
@@ -291,7 +295,7 @@ public class DependencyParser {
 
         while (!system.isTerminal(c)) {
           String oracle = system.getOracle(c, trees.get(i));
-          List<Integer> feature = getFeatures(c);
+          List<Feature> feature = getFeatures(c);
           List<Integer> label = new ArrayList<>();
           for (int j = 0; j < system.transitions.size(); ++j) {
             String str = system.transitions.get(j);
@@ -302,7 +306,7 @@ public class DependencyParser {
 
           ret.addExample(feature, label);
           for (int j = 0; j < feature.size(); ++j)
-            tokPosCount.incrementCount(feature.get(j) * feature.size() + j);
+            tokPosCount.incrementCount(feature.get(j).getId() * feature.size() + j);
           system.apply(c, oracle);
         }
       }

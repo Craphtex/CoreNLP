@@ -1,5 +1,6 @@
 package edu.stanford.nlp.parser.nndep;
 
+import edu.stanford.nlp.parser.nndep.feature.Feature;
 import edu.stanford.nlp.util.CollectionUtils;
 import edu.stanford.nlp.util.CoreMap;
 import edu.stanford.nlp.util.Pair;
@@ -190,7 +191,7 @@ public class Classifier {
       double correct = 0.0;
 
       for (Example ex : examples) {
-        List<Integer> feature = ex.getFeature();
+        List<Feature> feature = ex.getFeature();
         List<Integer> label = ex.getLabel();
 
         double[] scores = new double[numLabels];
@@ -205,7 +206,7 @@ public class Classifier {
 
         int offset = 0;
         for (int j = 0; j < config.numTokens; ++j) {
-          int tok = feature.get(j);
+          int tok = feature.get(j).getId();
           int index = tok * config.numTokens + j;
 
           if (preMap.containsKey(index)) {
@@ -277,7 +278,7 @@ public class Classifier {
 
         offset = 0;
         for (int j = 0; j < config.numTokens; ++j) {
-          int tok = feature.get(j);
+          int tok = feature.get(j).getId();
           int index = tok * config.numTokens + j;
           if (preMap.containsKey(index)) {
             int id = preMap.get(index);
@@ -473,10 +474,10 @@ public class Classifier {
   private Set<Integer> getToPreCompute(List<Example> examples) {
     Set<Integer> featureIDs = new HashSet<>();
     for (Example ex : examples) {
-      List<Integer> feature = ex.getFeature();
+      List<Feature> feature = ex.getFeature();
 
       for (int j = 0; j < config.numTokens; j++) {
-        int tok = feature.get(j);
+        int tok = feature.get(j).getId();
         int index = tok * config.numTokens + j;
         if (preMap.containsKey(index))
           featureIDs.add(index);
@@ -680,20 +681,22 @@ public class Classifier {
         .currentTimeMillis() - startTime) / 1000.0 + " (s)");
   }
 
-  double[] computeScores(List<Integer> feature, Map<Integer,double[]> sentence) {
-    return computeScores(feature, preMap, sentence);
+  double[] computeScores(List<Feature> features, Map<Integer,double[]> sentence) {
+    return computeScores(features, preMap, sentence);
   }
 
   /**
    * Feed a feature vector forward through the network. Returns the
    * values of the output layer.
    */
-  private double[] computeScores(List<Integer> feature, Map<Integer, Integer> preMap, Map<Integer,double[]> sentence) {
+  private double[] computeScores(List<Feature> features, Map<Integer, Integer> preMap, Map<Integer,double[]> sentence) {
     double[] hidden = new double[config.hiddenSize];
+    Feature.loadEmbedding(features, E);
     int offset = 0;
-    for (int j = 0; j < feature.size(); ++j) {
-      int tok = feature.get(j);
-      int index = tok * config.numTokens + j;
+    int x = 0;
+    for (Feature feature : features) {
+      int tok = feature.getId();
+      int index = tok * config.numTokens + x;
 
       if (!sentence.containsKey(tok) && preMap.containsKey(index)) {
         int id = preMap.get(index);
@@ -707,10 +710,12 @@ public class Classifier {
               hidden[i] += W1[i][offset + k] * sentence.get(tok)[k];
             }
             else {
-              hidden[i] += W1[i][offset + k] * E[tok][k];
+              //hidden[i] += W1[i][offset + k] * E[tok][k];
+              hidden[i] += W1[i][offset + k] * feature.getEmbedding()[k];
             }
       }
       offset += config.embeddingSize;
+      x++;
     }
 
     for (int i = 0; i < config.hiddenSize; ++i) {
