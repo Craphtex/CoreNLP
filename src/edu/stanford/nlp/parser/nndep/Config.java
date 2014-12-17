@@ -125,6 +125,8 @@ public class Config
   // Should remove this option once we make feature templates / dynamic features
   public static final int numTokens = 48;
 
+  public boolean wordEmbeddingBackPropagation = true;
+
   /**
    * Number of input tokens for which we should compute hidden-layer
    * unit activations.
@@ -190,7 +192,6 @@ public class Config
   public boolean featureReplaceWithPOS = false;
   public boolean featureAddMean = false;
   public boolean featureAddPOS = false;
-  public boolean featureNoWordEmbeddingBackPropagation = false;
 
   public Config(Properties properties) {
     setProperties(properties);
@@ -208,6 +209,7 @@ public class Config
     dropProb = PropertiesUtils.getDouble(props, "dropProb", dropProb);
     hiddenSize = PropertiesUtils.getInt(props, "hiddenSize", hiddenSize);
     embeddingSize = PropertiesUtils.getInt(props, "embeddingSize", embeddingSize);
+    wordEmbeddingBackPropagation = PropertiesUtils.getBool(props, "wordEmbeddingBackPropagation", wordEmbeddingBackPropagation);
     numPreComputed = PropertiesUtils.getInt(props, "numPreComputed", numPreComputed);
     evalPerIter = PropertiesUtils.getInt(props, "evalPerIter", evalPerIter);
     clearGradientsPerIter = PropertiesUtils.getInt(props, "clearGradientsPerIter", clearGradientsPerIter);
@@ -233,9 +235,6 @@ public class Config
         }
         else if (s.equals("pos")) {
           featureReplaceWithPOS = true;
-        }
-        else if (s.equals("nowebackprop")) {
-          featureNoWordEmbeddingBackPropagation = true;
         }
       }
     }
