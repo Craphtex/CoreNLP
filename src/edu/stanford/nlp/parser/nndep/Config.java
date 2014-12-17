@@ -7,6 +7,8 @@ import edu.stanford.nlp.trees.TreebankLanguagePack;
 import edu.stanford.nlp.util.PropertiesUtils;
 import edu.stanford.nlp.util.ReflectionLoading;
 
+import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 import java.util.Properties;
 import java.util.function.Function;
@@ -227,15 +229,13 @@ public class Config
                ? getLanguage(props.getProperty("language"))
                : language;
     tlp = Languages.getLanguageParams(language).treebankLanguagePack();
-    
-    if (props.containsKey("features")) {
-      for (String s : PropertiesUtils.getStringArray(props, "features")) {
-        if (s.equals("mean")) {
-          featureReplaceWithMean = true;
-        }
-        else if (s.equals("pos")) {
-          featureReplaceWithPOS = true;
-        }
+
+    for (String s : PropertiesUtils.getStringArray(props, "features")) {
+      if (s.equals("rmean")) {
+        featureReplaceWithMean = true;
+      }
+      else if (s.equals("rpos")) {
+        featureReplaceWithPOS = true;
       }
     }
   }
