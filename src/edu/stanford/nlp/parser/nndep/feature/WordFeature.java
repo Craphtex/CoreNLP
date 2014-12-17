@@ -27,7 +27,8 @@ public class WordFeature extends Feature {
 	}
 
 	public void loadEmbedding(double[][] embedding) {
-		this.embedding = embedding[id];
+		if (!tweaked)
+			this.embedding = embedding[id];
 	}
 
 	public double[] getEmbedding() {
