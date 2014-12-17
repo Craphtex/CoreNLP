@@ -594,7 +594,7 @@ public class Classifier {
 
     int to = E.length;
     int from = 0;
-    if (config.featureNoWordEmbeddingBackPropagation) {
+    if (!config.wordEmbeddingBackPropagation) {
       from = 35936; //Magic number for certain embedding.
     }
     for (int i = from; i < E.length; ++i) {
