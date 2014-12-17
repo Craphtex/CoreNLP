@@ -691,7 +691,6 @@ public class Classifier {
    */
   private double[] computeScores(List<Feature> features, Map<Integer, Integer> preMap) {
     double[] hidden = new double[config.hiddenSize];
-    Feature.loadEmbeddings(features, E);
     int offset = 0;
     int x = 0;
     for (Feature feature : features) {

@@ -205,7 +205,8 @@ class Util {
     printTreeStats("", trees);
   }
   
-  public static Map<Integer, double[]> getReplacementFeatures(List<CoreLabel> labels, double[][] E, boolean mean, boolean pos, DependencyParser dp) {
+  public static Map<Integer, double[]> getReplacementFeatures(CoreMap map, double[][] E, boolean mean, boolean pos, DependencyParser dp) {
+    List<CoreLabel> labels = map.get(CoreAnnotations.TokensAnnotation.class);
     HashMap<Integer, double[]> sentence = new HashMap<>();
     if (mean || pos) {
       int i = 0;

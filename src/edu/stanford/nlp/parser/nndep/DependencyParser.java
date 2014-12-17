@@ -160,7 +160,7 @@ public class DependencyParser {
     return labelIDs.get(s);
   }
 
-  public List<Feature> getFeatures(Configuration c) {
+  public List<Feature> getFeatures(Configuration c, Map<Integer, double[]> s) {
     // Presize the arrays for very slight speed gain. Hardcoded, but so is the current feature list.
     List<Feature> fWord = new ArrayList<Feature>(18);
     List<Feature> fPos = new ArrayList<Feature>(18);
@@ -208,11 +208,21 @@ public class DependencyParser {
       fLabel.add(new ArcFeature(getLabelID(c.getLabel(index))));
     }
 
-    List<Feature> feature = new ArrayList<>(48);
-    feature.addAll(fWord);
-    feature.addAll(fPos);
-    feature.addAll(fLabel);
-    return feature;
+    List<Feature> features = new ArrayList<>(48);
+    features.addAll(fWord);
+    features.addAll(fPos);
+    features.addAll(fLabel);
+
+    Feature.loadEmbeddings(features, classifier.getE());
+    if (s != null) {
+      for (Feature feature : features) {
+        if (s.containsKey(feature.getId())){
+          feature.tweaked = true;
+          feature.embedding = s.get(feature.getId());
+        }
+      }
+    }
+    return features;
   }
 
   private static final int POS_OFFSET = 18;
@@ -295,7 +305,7 @@ public class DependencyParser {
 
         while (!system.isTerminal(c)) {
           String oracle = system.getOracle(c, trees.get(i));
-          List<Feature> feature = getFeatures(c);
+          List<Feature> feature = getFeatures(c, null);
           List<Integer> label = new ArrayList<>();
           for (int j = 0; j < system.transitions.size(); ++j) {
             String str = system.transitions.get(j);
@@ -841,21 +851,12 @@ public class DependencyParser {
    */
   private DependencyTree predictInner(CoreMap sentence) {
     int numTrans = system.transitions.size();
-    Map<Integer, double[]> s = Util.getReplacementFeatures(sentence.get(CoreAnnotations.TokensAnnotation.class), classifier.getE(), config.featureReplaceWithMean, config.featureReplaceWithPOS, this);
+    Map<Integer, double[]> s = Util.getReplacementFeatures(sentence, classifier.getE(), config.featureReplaceWithMean, config.featureReplaceWithPOS, this);
 
     Configuration c = system.initialConfiguration(sentence);
     
     while (!system.isTerminal(c)) {
-      // Apply tweaked embedding to the words as precalculated.
-      List<Feature> features = getFeatures(c);
-      for (Feature feature:features) {
-        if (s.containsKey(feature.getId())){
-          feature.tweaked = true;
-          feature.embedding = s.get(feature.getId());
-        }
-      }
-
-      double[] scores = classifier.computeScores(features);
+      double[] scores = classifier.computeScores(getFeatures(c, s));
 
       double optScore = Double.NEGATIVE_INFINITY;
       String optTrans = null;
