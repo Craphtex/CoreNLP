@@ -216,7 +216,7 @@ class Util {
         if (mean) {
           int j = 0;
           try {
-            for (double d : Util.createMeanValueTweak(labels, i++, E, dp)) {
+            for (double d : Util.createMeanValueTweak(labels, i, E, dp)) {
               embedding[j++] += d;
             }
             ctr++;
@@ -226,7 +226,7 @@ class Util {
         if (pos) {
           int j = 0;
           try {
-            for (double d : Util.createPOSWeightTweak(labels, i++, E, dp)) {
+            for (double d : Util.createPOSWeightTweak(labels, i, E, dp)) {
               embedding[j++] += d;
             }
             ctr++;
@@ -240,6 +240,7 @@ class Util {
           Integer id = dp.getWordID(label.word());
           sentence.put(id, embedding);
         }
+        i++;
       }
     }
     return sentence;
