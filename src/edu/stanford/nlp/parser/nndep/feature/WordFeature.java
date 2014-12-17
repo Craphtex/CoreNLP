@@ -7,7 +7,6 @@ import edu.stanford.nlp.ling.CoreLabel;
 public class WordFeature extends Feature {
 
 	private int id;
-	private double[] embedding;
 	private boolean meanTweak;
 	private boolean posTweak;
 
@@ -21,6 +20,10 @@ public class WordFeature extends Feature {
 
 	public void applyPOSTweak(List<CoreLabel> sentence) {
 		
+	}
+
+	public boolean isTweaked() {
+		return tweaked;
 	}
 
 	public void loadEmbedding(double[][] embedding) {

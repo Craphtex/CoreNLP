@@ -681,38 +681,31 @@ public class Classifier {
         .currentTimeMillis() - startTime) / 1000.0 + " (s)");
   }
 
-  double[] computeScores(List<Feature> features, Map<Integer,double[]> sentence) {
-    return computeScores(features, preMap, sentence);
+  double[] computeScores(List<Feature> features) {
+    return computeScores(features, preMap);
   }
 
   /**
    * Feed a feature vector forward through the network. Returns the
    * values of the output layer.
    */
-  private double[] computeScores(List<Feature> features, Map<Integer, Integer> preMap, Map<Integer,double[]> sentence) {
+  private double[] computeScores(List<Feature> features, Map<Integer, Integer> preMap) {
     double[] hidden = new double[config.hiddenSize];
-    Feature.loadEmbedding(features, E);
+    Feature.loadEmbeddings(features, E);
     int offset = 0;
     int x = 0;
     for (Feature feature : features) {
       int tok = feature.getId();
       int index = tok * config.numTokens + x;
 
-      if (!sentence.containsKey(tok) && preMap.containsKey(index)) {
+      if (!feature.isTweaked() && preMap.containsKey(index)) {
         int id = preMap.get(index);
         for (int i = 0; i < config.hiddenSize; ++i)
           hidden[i] += saved[id][i];
       } else {
         for (int i = 0; i < config.hiddenSize; ++i)
           for (int k = 0; k < config.embeddingSize; ++k)
-            if (sentence.containsKey(tok)) {
-              // current feature is a word
-              hidden[i] += W1[i][offset + k] * sentence.get(tok)[k];
-            }
-            else {
-              //hidden[i] += W1[i][offset + k] * E[tok][k];
-              hidden[i] += W1[i][offset + k] * feature.getEmbedding()[k];
-            }
+            hidden[i] += W1[i][offset + k] * feature.getEmbedding()[k];
       }
       offset += config.embeddingSize;
       x++;

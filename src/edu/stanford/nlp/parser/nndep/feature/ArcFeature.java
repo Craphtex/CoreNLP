@@ -3,7 +3,6 @@ package edu.stanford.nlp.parser.nndep.feature;
 public class ArcFeature extends Feature {
 
 	private int id;
-	private double[] embedding;
 
 	public ArcFeature(int id) {
 		this.id = id;
@@ -19,6 +18,10 @@ public class ArcFeature extends Feature {
 
 	public int getId() {
 		return id;
+	}
+
+	public boolean isTweaked() {
+		return false;
 	}
 
 }

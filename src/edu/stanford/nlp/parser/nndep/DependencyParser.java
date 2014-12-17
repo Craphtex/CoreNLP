@@ -846,7 +846,16 @@ public class DependencyParser {
     Configuration c = system.initialConfiguration(sentence);
     
     while (!system.isTerminal(c)) {
-      double[] scores = classifier.computeScores(getFeatures(c),s);
+      // Apply tweaked embedding to the words as precalculated.
+      List<Feature> features = getFeatures(c);
+      for (Feature feature:features) {
+        if (s.containsKey(feature.getId())){
+          feature.tweaked = true;
+          feature.embedding = s.get(feature.getId());
+        }
+      }
+
+      double[] scores = classifier.computeScores(features);
 
       double optScore = Double.NEGATIVE_INFINITY;
       String optTrans = null;
