@@ -1,6 +1,5 @@
 package edu.stanford.nlp.parser.nndep;
 
-import edu.stanford.nlp.parser.nndep.feature.Feature;
 import edu.stanford.nlp.util.CollectionUtils;
 import edu.stanford.nlp.util.CoreMap;
 import edu.stanford.nlp.util.Pair;
@@ -191,8 +190,8 @@ public class Classifier {
       double correct = 0.0;
 
       for (Example ex : examples) {
-        List<Feature> feature = ex.getFeature();
-        List<Integer> label = ex.getLabel();
+        List<Feature> features = ex.getFeature();
+        List<Integer> labels = ex.getLabel();
 
         double[] scores = new double[numLabels];
         double[] hidden = new double[config.hiddenSize];
@@ -205,10 +204,13 @@ public class Classifier {
                             .toArray();
 
         int offset = 0;
-        for (int j = 0; j < config.numTokens; ++j) {
-          int tok = feature.get(j).getId();
-          int index = tok * config.numTokens + j;
+        int j = 0;
+        //for (int j = 0; j < config.numTokens; ++j) {
+        for (Feature feature: features) {
+          int index = feature.getIndex(j);
+          j++;
 
+          // Warning: Might be wrong index in premap. Check it up!
           if (preMap.containsKey(index)) {
             // Unit activations for this input feature value have been
             // precomputed
@@ -221,7 +223,8 @@ public class Classifier {
           } else {
             for (int nodeIndex : ls) {
               for (int k = 0; k < config.embeddingSize; ++k)
-                hidden[nodeIndex] += W1[nodeIndex][offset + k] * E[tok][k];
+                //hidden[nodeIndex] += W1[nodeIndex][offset + k] * E[tok][k];
+                hidden[nodeIndex] += W1[nodeIndex][offset + k] * feature.getEmbedding()[k];
             }
           }
           offset += config.embeddingSize;
@@ -236,7 +239,7 @@ public class Classifier {
         // Feed forward to softmax layer (no activation yet)
         int optLabel = -1;
         for (int i = 0; i < numLabels; ++i) {
-          if (label.get(i) >= 0) {
+          if (labels.get(i) >= 0) {
             for (int nodeIndex : ls)
               scores[i] += W2[i][nodeIndex] * hidden3[nodeIndex];
 
@@ -249,21 +252,21 @@ public class Classifier {
         double sum2 = 0.0;
         double maxScore = scores[optLabel];
         for (int i = 0; i < numLabels; ++i) {
-          if (label.get(i) >= 0) {
+          if (labels.get(i) >= 0) {
             scores[i] = Math.exp(scores[i] - maxScore);
-            if (label.get(i) == 1) sum1 += scores[i];
+            if (labels.get(i) == 1) sum1 += scores[i];
             sum2 += scores[i];
           }
         }
 
         cost += (Math.log(sum2) - Math.log(sum1)) / params.getBatchSize();
-        if (label.get(optLabel) == 1)
+        if (labels.get(optLabel) == 1)
           correct += +1.0 / params.getBatchSize();
 
         double[] gradHidden3 = new double[config.hiddenSize];
         for (int i = 0; i < numLabels; ++i)
-          if (label.get(i) >= 0) {
-            double delta = -(label.get(i) - scores[i] / sum2) / params.getBatchSize();
+          if (labels.get(i) >= 0) {
+            double delta = -(labels.get(i) - scores[i] / sum2) / params.getBatchSize();
             for (int nodeIndex : ls) {
               gradW2[i][nodeIndex] += delta * hidden3[nodeIndex];
               gradHidden3[nodeIndex] += delta * W2[i][nodeIndex];
@@ -277,9 +280,12 @@ public class Classifier {
         }
 
         offset = 0;
-        for (int j = 0; j < config.numTokens; ++j) {
-          int tok = feature.get(j).getId();
-          int index = tok * config.numTokens + j;
+        j=0;
+        //for (int j = 0; j < config.numTokens; ++j) {
+        for (Feature feature: features) {
+          int index = feature.getIndex(j);
+          j++;
+          
           if (preMap.containsKey(index)) {
             int id = preMap.get(index);
             for (int nodeIndex : ls)
@@ -287,8 +293,8 @@ public class Classifier {
           } else {
             for (int nodeIndex : ls) {
               for (int k = 0; k < config.embeddingSize; ++k) {
-                gradW1[nodeIndex][offset + k] += gradHidden[nodeIndex] * E[tok][k];
-                gradE[tok][k] += gradHidden[nodeIndex] * W1[nodeIndex][offset + k];
+                gradW1[nodeIndex][offset + k] += gradHidden[nodeIndex] * feature.getEmbedding()[k];
+                gradE[feature.getId()][k] += gradHidden[nodeIndex] * W1[nodeIndex][offset + k];
               }
             }
           }
@@ -695,7 +701,7 @@ public class Classifier {
     int x = 0;
     for (Feature feature : features) {
       int tok = feature.getId();
-      int index = tok * config.numTokens + x;
+      int index = feature.getIndex(x);
 
       if (!feature.isTweaked() && preMap.containsKey(index)) {
         int id = preMap.get(index);

@@ -9,10 +9,6 @@ import edu.stanford.nlp.ling.HasWord;
 import edu.stanford.nlp.ling.IndexedWord;
 import edu.stanford.nlp.ling.TaggedWord;
 import edu.stanford.nlp.ling.Word;
-import edu.stanford.nlp.parser.nndep.feature.ArcFeature;
-import edu.stanford.nlp.parser.nndep.feature.Feature;
-import edu.stanford.nlp.parser.nndep.feature.POSFeature;
-import edu.stanford.nlp.parser.nndep.feature.WordFeature;
 import edu.stanford.nlp.process.DocumentPreprocessor;
 import edu.stanford.nlp.stats.Counter;
 import edu.stanford.nlp.stats.Counters;
@@ -35,7 +31,6 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.Writer;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
@@ -167,45 +162,45 @@ public class DependencyParser {
     List<Feature> fLabel = new ArrayList<Feature>(12);
     for (int j = 2; j >= 0; --j) {
       int index = c.getStack(j);
-      fWord.add(new WordFeature(getWordID(c.getWord(index))));
-      fPos.add(new POSFeature(getPosID(c.getPOS(index))));
+      fWord.add(new Feature.WordFeature(getWordID(c.getWord(index))));
+      fPos.add(new Feature.POSFeature(getPosID(c.getPOS(index))));
     }
     for (int j = 0; j <= 2; ++j) {
       int index = c.getBuffer(j);
-      fWord.add(new WordFeature(getWordID(c.getWord(index))));
-      fPos.add(new POSFeature(getPosID(c.getPOS(index))));
+      fWord.add(new Feature.WordFeature(getWordID(c.getWord(index))));
+      fPos.add(new Feature.POSFeature(getPosID(c.getPOS(index))));
     }
     for (int j = 0; j <= 1; ++j) {
       int k = c.getStack(j);
       int index = c.getLeftChild(k);
-      fWord.add(new WordFeature(getWordID(c.getWord(index))));
-      fPos.add(new POSFeature(getPosID(c.getPOS(index))));
-      fLabel.add(new ArcFeature(getLabelID(c.getLabel(index))));
+      fWord.add(new Feature.WordFeature(getWordID(c.getWord(index))));
+      fPos.add(new Feature.POSFeature(getPosID(c.getPOS(index))));
+      fLabel.add(new Feature.ArcFeature(getLabelID(c.getLabel(index))));
 
       index = c.getRightChild(k);
-      fWord.add(new WordFeature(getWordID(c.getWord(index))));
-      fPos.add(new POSFeature(getPosID(c.getPOS(index))));
-      fLabel.add(new ArcFeature(getLabelID(c.getLabel(index))));
+      fWord.add(new Feature.WordFeature(getWordID(c.getWord(index))));
+      fPos.add(new Feature.POSFeature(getPosID(c.getPOS(index))));
+      fLabel.add(new Feature.ArcFeature(getLabelID(c.getLabel(index))));
 
       index = c.getLeftChild(k, 2);
-      fWord.add(new WordFeature(getWordID(c.getWord(index))));
-      fPos.add(new POSFeature(getPosID(c.getPOS(index))));
-      fLabel.add(new ArcFeature(getLabelID(c.getLabel(index))));
+      fWord.add(new Feature.WordFeature(getWordID(c.getWord(index))));
+      fPos.add(new Feature.POSFeature(getPosID(c.getPOS(index))));
+      fLabel.add(new Feature.ArcFeature(getLabelID(c.getLabel(index))));
 
       index = c.getRightChild(k, 2);
-      fWord.add(new WordFeature(getWordID(c.getWord(index))));
-      fPos.add(new POSFeature(getPosID(c.getPOS(index))));
-      fLabel.add(new ArcFeature(getLabelID(c.getLabel(index))));
+      fWord.add(new Feature.WordFeature(getWordID(c.getWord(index))));
+      fPos.add(new Feature.POSFeature(getPosID(c.getPOS(index))));
+      fLabel.add(new Feature.ArcFeature(getLabelID(c.getLabel(index))));
 
       index = c.getLeftChild(c.getLeftChild(k));
-      fWord.add(new WordFeature(getWordID(c.getWord(index))));
-      fPos.add(new POSFeature(getPosID(c.getPOS(index))));
-      fLabel.add(new ArcFeature(getLabelID(c.getLabel(index))));
+      fWord.add(new Feature.WordFeature(getWordID(c.getWord(index))));
+      fPos.add(new Feature.POSFeature(getPosID(c.getPOS(index))));
+      fLabel.add(new Feature.ArcFeature(getLabelID(c.getLabel(index))));
 
       index = c.getRightChild(c.getRightChild(k));
-      fWord.add(new WordFeature(getWordID(c.getWord(index))));
-      fPos.add(new POSFeature(getPosID(c.getPOS(index))));
-      fLabel.add(new ArcFeature(getLabelID(c.getLabel(index))));
+      fWord.add(new Feature.WordFeature(getWordID(c.getWord(index))));
+      fPos.add(new Feature.POSFeature(getPosID(c.getPOS(index))));
+      fLabel.add(new Feature.ArcFeature(getLabelID(c.getLabel(index))));
     }
 
     List<Feature> features = new ArrayList<>(48);
@@ -215,10 +210,19 @@ public class DependencyParser {
 
     Feature.loadEmbeddings(features, classifier.getE());
     if (s != null) {
-      for (Feature feature : features) {
-        if (s.containsKey(feature.getId())){
-          feature.tweaked = true;
-          feature.embedding = s.get(feature.getId());
+      if (config.replaceWithMean || config.replaceWithPOS) {
+        for (Feature feature : features) {
+          if (s.containsKey(feature.getId())){
+            feature.overWriteEmbedding(s.get(feature.getId()));
+          }
+        }
+      }
+      else if (config.featureMean || config.featurePOS) {
+   	    List<Feature> fAdditional = new ArrayList<Feature>(18);
+        for (Feature feature : fWord) {
+          if (s.containsKey(feature.getId())){
+            fAdditional.add(new Feature.AdditionalFeature(0));
+          }
         }
       }
     }
@@ -851,12 +855,12 @@ public class DependencyParser {
    */
   private DependencyTree predictInner(CoreMap sentence) {
     int numTrans = system.transitions.size();
-    Map<Integer, double[]> s = Util.getReplacementFeatures(sentence, classifier.getE(), config.featureReplaceWithMean, config.featureReplaceWithPOS, this);
+    Map<Integer, double[]> r = Util.getReplacementFeatures(sentence, classifier.getE(), config.replaceWithMean, config.replaceWithPOS, this);
 
     Configuration c = system.initialConfiguration(sentence);
     
     while (!system.isTerminal(c)) {
-      double[] scores = classifier.computeScores(getFeatures(c, s));
+      double[] scores = classifier.computeScores(getFeatures(c, r));
 
       double optScore = Double.NEGATIVE_INFINITY;
       String optTrans = null;
@@ -1135,7 +1139,8 @@ public class DependencyParser {
    * Training/Parsing options:
    * <table>
    *   <tr><th>Option</th><th>Default</th><th>Description</th></tr>
-   *   <tr><td><tt>&#8209;features</tt></td><td>none</td><td>Select what semantic features to use. Is passed as a comma separated list with one or more features names. Currently available features:<ul><li><i>rmean</i>, Replace the embedding for the current word with a mean value over the current sentence (excepting the current word).<li><i>pos</i>, Replace the embedding for the current word with a weighted mean value over selected POS-types from the current sentence (excepting the current word).</ul></td></tr>
+   *   <tr><td><tt>&#8209;feature</tt></td><td>none</td><td>Select what additional semantic features to use. Is passed as a comma separated list with one or more feature names. Currently available features:<ul><li><i>mean</i>, For each word in the input add an additional input feature consisting of a mean value over the current sentence (excepting the current word).<li><i>pos</i>, For each word in the input add an additional input feature consisting of a weighted mean value over selected POS-types from the current sentence (excepting the current word).</ul></td></tr>
+   *   <tr><td><tt>&#8209;replace</tt></td><td>none</td><td>Select what semantic replacement features to use. Is passed as a comma separated list with one or more feature names. Currently available features:<ul><li><i>mean</i>, Replace the embedding for the current word with a mean value over the current sentence (excepting the current word).<li><i>pos</i>, Replace the embedding for the current word with a weighted mean value over selected POS-types from the current sentence (excepting the current word).</ul></td></tr>
    * </table>
    *
    * Training options:

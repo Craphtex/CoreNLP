@@ -2,8 +2,6 @@ package edu.stanford.nlp.parser.nndep;
 
 import java.util.List;
 
-import edu.stanford.nlp.parser.nndep.feature.Feature;
-
 /**
  * @author Christopher Manning
  */

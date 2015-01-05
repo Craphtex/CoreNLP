@@ -11,8 +11,6 @@ package edu.stanford.nlp.parser.nndep;
 import java.util.ArrayList;
 import java.util.List;
 
-import edu.stanford.nlp.parser.nndep.feature.Feature;
-
 /**
  * Defines a list of training / testing examples in multi-class classification setting.
  *
