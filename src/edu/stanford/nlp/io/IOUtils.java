@@ -17,7 +17,9 @@ import java.util.zip.GZIPOutputStream;
 /**
  * Helper Class for various I/O related things.
  *
- * @author Kayur Patel, Teg Grenager
+ * @author Kayur Patel
+ * @author Teg Grenager
+ * @author Christopher Manning
  */
 
 public class IOUtils {
@@ -313,6 +315,19 @@ public class IOUtils {
     return ErasureUtils.uncheckedCast(o);
   }
 
+  public static <T> T readObjectAnnouncingTimingFromURLOrClasspathOrFileSystem(String msg, String path) {
+    T obj;
+    try {
+      Timing timing = new Timing();
+      System.err.print(msg + ' ' + path + " ... ");
+      obj = IOUtils.readObjectFromURLOrClasspathOrFileSystem(path);
+      timing.done();
+    } catch (IOException | ClassNotFoundException e) {
+      throw new RuntimeIOException(e);
+    }
+    return obj;
+  }
+
   public static <T> T readObjectFromObjectStream(ObjectInputStream ois) throws IOException,
           ClassNotFoundException {
     Object o = ois.readObject();
@@ -536,9 +551,8 @@ public class IOUtils {
    * Open a BufferedReader on stdin. Use the user's default encoding.
    *
    * @return The BufferedReader
-   * @throws IOException If there is an I/O problem
    */
-  public static BufferedReader readerFromStdin() throws IOException {
+  public static BufferedReader readerFromStdin() {
     return new BufferedReader(new InputStreamReader(System.in));
   }
 
