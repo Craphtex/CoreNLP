@@ -17,6 +17,7 @@ import edu.stanford.nlp.stats.Counter;
 import edu.stanford.nlp.stats.Counters;
 import edu.stanford.nlp.stats.IntCounter;
 import edu.stanford.nlp.util.CoreMap;
+
 import java.util.*;
 import java.io.*;
 
@@ -162,17 +163,20 @@ class Util {
     try
     {
       PrintWriter output = IOUtils.getPrintWriter(outFile);
-      for (CoreMap sentence : sentences)
+
+      for (int i = 0; i < sentences.size(); i++)
       {
+        CoreMap sentence = sentences.get(i);
+        DependencyTree tree = trees.get(i);
+
         List<CoreLabel> tokens = sentence.get(CoreAnnotations.TokensAnnotation.class);
 
         for (int j = 1, size = tokens.size(); j <= size; ++j)
         {
           CoreLabel token = tokens.get(j - 1);
           output.printf("%d\t%s\t_\t%s\t%s\t_\t%d\t%s\t_\t_%n",
-                  j, token.word(), token.tag(), token.tag(),
-                  token.get(CoreAnnotations.CoNLLDepParentIndexAnnotation.class),
-                  token.get(CoreAnnotations.CoNLLDepTypeAnnotation.class));
+              j, token.word(), token.tag(), token.tag(),
+              tree.getHead(j), tree.getLabel(j));
         }
         output.println();
       }
@@ -186,17 +190,25 @@ class Util {
   public static void printTreeStats(String str, List<DependencyTree> trees)
   {
     System.err.println(Config.SEPARATOR + " " + str);
-    System.err.println("#Trees: " + trees.size());
-    int nonTrees = 0;
+    int nTrees = trees.size();
+    int nonTree = 0;
+    int multiRoot = 0;
     int nonProjective = 0;
     for (DependencyTree tree : trees) {
       if (!tree.isTree())
-        ++nonTrees;
-      else if (!tree.isProjective())
-        ++nonProjective;
+        ++nonTree;
+      else
+      {
+        if (!tree.isProjective())
+          ++nonProjective;
+        if (!tree.isSingleRoot())
+          ++multiRoot;
+      }
     }
-    System.err.println(nonTrees + " tree(s) are illegal.");
-    System.err.println(nonProjective + " tree(s) are legal but not projective.");
+    System.err.printf("#Trees: %d%n", nTrees);
+    System.err.printf("%d tree(s) are illegal (%.2f%%).%n", nonTree, nonTree * 100.0 / nTrees);
+    System.err.printf("%d tree(s) are legal but have multiple roots (%.2f%%).%n", multiRoot, multiRoot * 100.0 / nTrees);
+    System.err.printf("%d tree(s) are legal but not projective (%.2f%%).%n", nonProjective, nonProjective * 100.0 / nTrees);
   }
 
   public static void printTreeStats(List<DependencyTree> trees)
@@ -204,7 +216,50 @@ class Util {
     printTreeStats("", trees);
   }
   
-  public static double[] createMeanValueTweak(List<CoreLabel> sentence, int current, double[][] embeddings, DependencyParser dp) throws TweakException{
+  public static Map<Integer, double[]> getFeaturesEmbeddings(CoreMap map, Classifier classifier, Config config, DependencyParser parser) {
+    List<CoreLabel> labels = map.get(CoreAnnotations.TokensAnnotation.class);
+    double[][] E = classifier.getE();
+    HashMap<Integer, double[]> sentence = new HashMap<>();
+    if (config.featureMean || config.featurePOS) {
+      int i = 0;
+      for (CoreLabel label : labels) {
+        int ctr = 0;
+        double[] embedding = new double[E[0].length];
+        Arrays.fill(embedding, 0.0);
+        if (config.featureMean) {
+          int j = 0;
+          try {
+            for (double d : Util.createMeanValueTweak(labels, i, E, parser)) {
+              embedding[j++] += d;
+            }
+            ctr++;
+          }
+          catch (Util.TweakException e) {}
+        }
+        if (config.featurePOS) {
+          int j = 0;
+          try {
+            for (double d : Util.createPOSWeightTweak(labels, i, E, parser)) {
+              embedding[j++] += d;
+            }
+            ctr++;
+          }
+          catch (Util.TweakException e) {}
+        }
+        if (ctr != 0) {
+          for (int j = 0; j < embedding.length; j++) {
+            embedding[j] /= ctr;
+          }
+          Integer id = parser.getWordID(label.word());
+          sentence.put(id, embedding);
+        }
+        i++;
+      }
+    }
+    return sentence;
+  }
+  
+  public static double[] createMeanValueTweak(List<CoreLabel> sentence, int current, double[][] embeddings, DependencyParser parser) throws TweakException{
     if (sentence.size() == 1) throw new TweakException();
     double[] embedding = new double[embeddings[0].length];
     for (int i = 0; i < embedding.length; i++) {
@@ -215,7 +270,7 @@ class Util {
     int i = 0;
     for (CoreLabel label : sentence) {
       if (current != i++) {
-        index = dp.getWordID(label.word());
+        index = parser.getWordID(label.word());
         for (int j = 0; j < embedding.length; j++) {
           embedding[j] += embeddings[index][j];
         }
@@ -228,7 +283,7 @@ class Util {
     return embedding;
   }
   
-  public static double[] createPOSWeightTweak(List<CoreLabel> sentence, int current, double[][] embeddings, DependencyParser dp) throws TweakException{
+  public static double[] createPOSWeightTweak(List<CoreLabel> sentence, int current, double[][] embeddings, DependencyParser parser) throws TweakException{
     if (sentence.size() == 1) throw new TweakException();
     double[] embedding = new double[embeddings[0].length];
     for (int i = 0; i < embedding.length; i++) {
@@ -239,7 +294,7 @@ class Util {
     int i = 0;
     for (CoreLabel label : sentence) {
       if (current != i++) {
-        index = dp.getWordID(label.word());
+        index = parser.getWordID(label.word());
         for (int j = 0; j < embedding.length; j++) {
           embedding[j] += embeddings[index][j];
           // Proper way of doing this is to use a HashMap with weights.

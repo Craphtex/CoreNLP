@@ -7,6 +7,8 @@ import edu.stanford.nlp.trees.TreebankLanguagePack;
 import edu.stanford.nlp.util.PropertiesUtils;
 import edu.stanford.nlp.util.ReflectionLoading;
 
+import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 import java.util.Properties;
 import java.util.function.Function;
@@ -123,7 +125,9 @@ public class Config
    */
   // TODO: we can figure this out automatically based on features used.
   // Should remove this option once we make feature templates / dynamic features
-  public static final int numTokens = 48;
+  public static int numTokens = 48;
+
+  public boolean wordEmbeddingBackPropagation = true;
 
   /**
    * Number of input tokens for which we should compute hidden-layer
@@ -188,6 +192,8 @@ public class Config
 
   public boolean featureMean = false;
   public boolean featurePOS = false;
+  
+  public boolean featureModeReplace = false;
 
   public Config(Properties properties) {
     setProperties(properties);
@@ -205,6 +211,7 @@ public class Config
     dropProb = PropertiesUtils.getDouble(props, "dropProb", dropProb);
     hiddenSize = PropertiesUtils.getInt(props, "hiddenSize", hiddenSize);
     embeddingSize = PropertiesUtils.getInt(props, "embeddingSize", embeddingSize);
+    wordEmbeddingBackPropagation = PropertiesUtils.getBool(props, "wordEmbeddingBackPropagation", wordEmbeddingBackPropagation);
     numPreComputed = PropertiesUtils.getInt(props, "numPreComputed", numPreComputed);
     evalPerIter = PropertiesUtils.getInt(props, "evalPerIter", evalPerIter);
     clearGradientsPerIter = PropertiesUtils.getInt(props, "clearGradientsPerIter", clearGradientsPerIter);
@@ -222,15 +229,19 @@ public class Config
                ? getLanguage(props.getProperty("language"))
                : language;
     tlp = Languages.getLanguageParams(language).treebankLanguagePack();
-    
-    if (props.containsKey("features")) {
-      for (String s : PropertiesUtils.getStringArray(props, "features")) {
-        if (s.equals("mean")) {
-          featureMean = true;
-        }
-        else if (s.equals("pos")) {
-          featurePOS = true;
-        }
+
+    String mode = "additional";
+    mode = PropertiesUtils.getString(props, "featureType", mode);
+    if (mode.equals("replace")) {
+      featureModeReplace = true;
+    }
+
+    for (String s : PropertiesUtils.getStringArray(props, "featureType")) {
+      if (s.equals("mean")) {
+        featureMean = true;
+      }
+      else if (s.equals("pos")) {
+        featurePOS = true;
       }
     }
   }
@@ -247,7 +258,6 @@ public class Config
       if (l.name().equalsIgnoreCase(languageStr))
         return l;
     }
-
     return null;
   }
 

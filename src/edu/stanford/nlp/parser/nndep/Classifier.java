@@ -15,7 +15,6 @@ import java.util.Set;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.stream.IntStream;
 
-import static java.util.stream.Collectors.toSet;
 
 /**
  * Neural network classifier which powers a transition-based dependency
@@ -141,7 +140,7 @@ public class Classifier {
     numLabels = W2.length;
 
     preMap = new HashMap<>();
-    for (int i = 0; i < preComputed.size(); ++i)
+    for (int i = 0; i < preComputed.size() && i < config.numPreComputed; ++i)
       preMap.put(preComputed.get(i), i);
 
     isTraining = dataset != null;
@@ -190,8 +189,8 @@ public class Classifier {
       double correct = 0.0;
 
       for (Example ex : examples) {
-        List<Integer> feature = ex.getFeature();
-        List<Integer> label = ex.getLabel();
+        List<Feature> features = ex.getFeature();
+        List<Integer> labels = ex.getLabel();
 
         double[] scores = new double[numLabels];
         double[] hidden = new double[config.hiddenSize];
@@ -204,10 +203,13 @@ public class Classifier {
                             .toArray();
 
         int offset = 0;
-        for (int j = 0; j < config.numTokens; ++j) {
-          int tok = feature.get(j);
-          int index = tok * config.numTokens + j;
+        int j = 0;
+        //for (int j = 0; j < config.numTokens; ++j) {
+        for (Feature feature: features) {
+          int index = feature.getIndex(j);
+          j++;
 
+          // Warning: Might be wrong index in premap. Check it up!
           if (preMap.containsKey(index)) {
             // Unit activations for this input feature value have been
             // precomputed
@@ -218,9 +220,12 @@ public class Classifier {
             for (int nodeIndex : ls)
               hidden[nodeIndex] += saved[id][nodeIndex];
           } else {
+            if (feature.getEmbedding() == null)
+              feature.loadEmbedding(E);
             for (int nodeIndex : ls) {
               for (int k = 0; k < config.embeddingSize; ++k)
-                hidden[nodeIndex] += W1[nodeIndex][offset + k] * E[tok][k];
+                //hidden[nodeIndex] += W1[nodeIndex][offset + k] * E[tok][k];
+                hidden[nodeIndex] += W1[nodeIndex][offset + k] * feature.getEmbedding()[k];
             }
           }
           offset += config.embeddingSize;
@@ -235,7 +240,7 @@ public class Classifier {
         // Feed forward to softmax layer (no activation yet)
         int optLabel = -1;
         for (int i = 0; i < numLabels; ++i) {
-          if (label.get(i) >= 0) {
+          if (labels.get(i) >= 0) {
             for (int nodeIndex : ls)
               scores[i] += W2[i][nodeIndex] * hidden3[nodeIndex];
 
@@ -248,21 +253,21 @@ public class Classifier {
         double sum2 = 0.0;
         double maxScore = scores[optLabel];
         for (int i = 0; i < numLabels; ++i) {
-          if (label.get(i) >= 0) {
+          if (labels.get(i) >= 0) {
             scores[i] = Math.exp(scores[i] - maxScore);
-            if (label.get(i) == 1) sum1 += scores[i];
+            if (labels.get(i) == 1) sum1 += scores[i];
             sum2 += scores[i];
           }
         }
 
         cost += (Math.log(sum2) - Math.log(sum1)) / params.getBatchSize();
-        if (label.get(optLabel) == 1)
+        if (labels.get(optLabel) == 1)
           correct += +1.0 / params.getBatchSize();
 
         double[] gradHidden3 = new double[config.hiddenSize];
         for (int i = 0; i < numLabels; ++i)
-          if (label.get(i) >= 0) {
-            double delta = -(label.get(i) - scores[i] / sum2) / params.getBatchSize();
+          if (labels.get(i) >= 0) {
+            double delta = -(labels.get(i) - scores[i] / sum2) / params.getBatchSize();
             for (int nodeIndex : ls) {
               gradW2[i][nodeIndex] += delta * hidden3[nodeIndex];
               gradHidden3[nodeIndex] += delta * W2[i][nodeIndex];
@@ -272,13 +277,16 @@ public class Classifier {
         double[] gradHidden = new double[config.hiddenSize];
         for (int nodeIndex : ls) {
           gradHidden[nodeIndex] = gradHidden3[nodeIndex] * 3 * hidden[nodeIndex] * hidden[nodeIndex];
-          gradb1[nodeIndex] += gradHidden3[nodeIndex];
+          gradb1[nodeIndex] += gradHidden[nodeIndex];
         }
 
         offset = 0;
-        for (int j = 0; j < config.numTokens; ++j) {
-          int tok = feature.get(j);
-          int index = tok * config.numTokens + j;
+        j=0;
+        //for (int j = 0; j < config.numTokens; ++j) {
+        for (Feature feature: features) {
+          int index = feature.getIndex(j);
+          j++;
+          
           if (preMap.containsKey(index)) {
             int id = preMap.get(index);
             for (int nodeIndex : ls)
@@ -286,8 +294,8 @@ public class Classifier {
           } else {
             for (int nodeIndex : ls) {
               for (int k = 0; k < config.embeddingSize; ++k) {
-                gradW1[nodeIndex][offset + k] += gradHidden[nodeIndex] * E[tok][k];
-                gradE[tok][k] += gradHidden[nodeIndex] * W1[nodeIndex][offset + k];
+                gradW1[nodeIndex][offset + k] += gradHidden[nodeIndex] * feature.getEmbedding()[k];
+                gradE[feature.getId()][k] += gradHidden[nodeIndex] * W1[nodeIndex][offset + k];
               }
             }
           }
@@ -473,10 +481,10 @@ public class Classifier {
   private Set<Integer> getToPreCompute(List<Example> examples) {
     Set<Integer> featureIDs = new HashSet<>();
     for (Example ex : examples) {
-      List<Integer> feature = ex.getFeature();
+      List<Feature> feature = ex.getFeature();
 
-      for (int j = 0; j < config.numTokens; j++) {
-        int tok = feature.get(j);
+      for (int j = 0; j < feature.size(); j++) {
+        int tok = feature.get(j).getId();
         int index = tok * config.numTokens + j;
         if (preMap.containsKey(index))
           featureIDs.add(index);
@@ -591,7 +599,12 @@ public class Classifier {
       }
     }
 
-    for (int i = 0; i < E.length; ++i) {
+    int to = E.length;
+    int from = 0;
+    if (!config.wordEmbeddingBackPropagation) {
+      from = 35936; //Magic number for certain embedding.
+    }
+    for (int i = from; i < E.length; ++i) {
       for (int j = 0; j < E[i].length; ++j) {
         eg2E[i][j] += gradE[i][j] * gradE[i][j];
         E[i][j] -= adaAlpha * gradE[i][j] / Math.sqrt(eg2E[i][j] + adaEps);
@@ -637,13 +650,7 @@ public class Classifier {
    * @see #preCompute(java.util.Set)
    */
   public void preCompute() {
-    // If no features are specified, pre-compute all of them (which fit
-    // into a `saved` array of size `config.numPreComputed`)
-    Set<Integer> keys = preMap.entrySet().stream()
-                              .filter(e -> e.getValue() < config.numPreComputed)
-                              .map(Map.Entry::getKey)
-                              .collect(toSet());
-    preCompute(keys);
+    preCompute(preMap.keySet());
   }
 
   /**
@@ -675,37 +682,33 @@ public class Classifier {
         .currentTimeMillis() - startTime) / 1000.0 + " (s)");
   }
 
-  double[] computeScores(int[] feature, HashMap<Integer,double[]> sentence) {
-    return computeScores(feature, preMap, sentence);
+  double[] computeScores(List<Feature> features) {
+    return computeScores(features, preMap);
   }
 
   /**
    * Feed a feature vector forward through the network. Returns the
    * values of the output layer.
    */
-  private double[] computeScores(int[] feature, Map<Integer, Integer> preMap, HashMap<Integer,double[]> sentence) {
+  private double[] computeScores(List<Feature> features, Map<Integer, Integer> preMap) {
     double[] hidden = new double[config.hiddenSize];
     int offset = 0;
-    for (int j = 0; j < feature.length; ++j) {
-      int tok = feature[j];
-//      int index = tok * config.numTokens + j;
+    int x = 0;
+    for (Feature feature : features) {
+      int tok = feature.getId();
+      int index = feature.getIndex(x);
 
-//      if (preMap.containsKey(index)) {
-//        int id = preMap.get(index);
-//        for (int i = 0; i < config.hiddenSize; ++i)
-//          hidden[i] += saved[id][i];
-//      } else {
+      if (!feature.isTweaked() && preMap.containsKey(index)) {
+        int id = preMap.get(index);
+        for (int i = 0; i < config.hiddenSize; ++i)
+          hidden[i] += saved[id][i];
+      } else {
         for (int i = 0; i < config.hiddenSize; ++i)
           for (int k = 0; k < config.embeddingSize; ++k)
-            if (sentence.containsKey(tok)) {
-              // current feature is a word
-              hidden[i] += W1[i][offset + k] * sentence.get(tok)[k];
-            }
-            else {
-              hidden[i] += W1[i][offset + k] * E[tok][k];
-            }
-//      }
+            hidden[i] += W1[i][offset + k] * feature.getEmbedding()[k];
+      }
       offset += config.embeddingSize;
+      x++;
     }
 
     for (int i = 0; i < config.hiddenSize; ++i) {

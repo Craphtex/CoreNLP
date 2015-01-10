@@ -31,7 +31,6 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.Writer;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
@@ -156,59 +155,79 @@ public class DependencyParser {
     return labelIDs.get(s);
   }
 
-  public List<Integer> getFeatures(Configuration c) {
+  public List<Feature> getFeatures(Configuration c, Map<Integer, double[]> featureEmbedding) {
     // Presize the arrays for very slight speed gain. Hardcoded, but so is the current feature list.
-    List<Integer> fWord = new ArrayList<Integer>(18);
-    List<Integer> fPos = new ArrayList<Integer>(18);
-    List<Integer> fLabel = new ArrayList<Integer>(12);
+    List<Feature> fWord = new ArrayList<Feature>(18);
+    List<Feature> fPos = new ArrayList<Feature>(18);
+    List<Feature> fLabel = new ArrayList<Feature>(12);
+    List<Feature> fAdditional = new ArrayList<Feature>(18);
     for (int j = 2; j >= 0; --j) {
       int index = c.getStack(j);
-      fWord.add(getWordID(c.getWord(index)));
-      fPos.add(getPosID(c.getPOS(index)));
+      fWord.add(new Feature.WordFeature(getWordID(c.getWord(index))));
+      fPos.add(new Feature.POSFeature(getPosID(c.getPOS(index))));
     }
     for (int j = 0; j <= 2; ++j) {
       int index = c.getBuffer(j);
-      fWord.add(getWordID(c.getWord(index)));
-      fPos.add(getPosID(c.getPOS(index)));
+      fWord.add(new Feature.WordFeature(getWordID(c.getWord(index))));
+      fPos.add(new Feature.POSFeature(getPosID(c.getPOS(index))));
     }
     for (int j = 0; j <= 1; ++j) {
       int k = c.getStack(j);
       int index = c.getLeftChild(k);
-      fWord.add(getWordID(c.getWord(index)));
-      fPos.add(getPosID(c.getPOS(index)));
-      fLabel.add(getLabelID(c.getLabel(index)));
+      fWord.add(new Feature.WordFeature(getWordID(c.getWord(index))));
+      fPos.add(new Feature.POSFeature(getPosID(c.getPOS(index))));
+      fLabel.add(new Feature.ArcFeature(getLabelID(c.getLabel(index))));
 
       index = c.getRightChild(k);
-      fWord.add(getWordID(c.getWord(index)));
-      fPos.add(getPosID(c.getPOS(index)));
-      fLabel.add(getLabelID(c.getLabel(index)));
+      fWord.add(new Feature.WordFeature(getWordID(c.getWord(index))));
+      fPos.add(new Feature.POSFeature(getPosID(c.getPOS(index))));
+      fLabel.add(new Feature.ArcFeature(getLabelID(c.getLabel(index))));
 
       index = c.getLeftChild(k, 2);
-      fWord.add(getWordID(c.getWord(index)));
-      fPos.add(getPosID(c.getPOS(index)));
-      fLabel.add(getLabelID(c.getLabel(index)));
+      fWord.add(new Feature.WordFeature(getWordID(c.getWord(index))));
+      fPos.add(new Feature.POSFeature(getPosID(c.getPOS(index))));
+      fLabel.add(new Feature.ArcFeature(getLabelID(c.getLabel(index))));
 
       index = c.getRightChild(k, 2);
-      fWord.add(getWordID(c.getWord(index)));
-      fPos.add(getPosID(c.getPOS(index)));
-      fLabel.add(getLabelID(c.getLabel(index)));
+      fWord.add(new Feature.WordFeature(getWordID(c.getWord(index))));
+      fPos.add(new Feature.POSFeature(getPosID(c.getPOS(index))));
+      fLabel.add(new Feature.ArcFeature(getLabelID(c.getLabel(index))));
 
       index = c.getLeftChild(c.getLeftChild(k));
-      fWord.add(getWordID(c.getWord(index)));
-      fPos.add(getPosID(c.getPOS(index)));
-      fLabel.add(getLabelID(c.getLabel(index)));
+      fWord.add(new Feature.WordFeature(getWordID(c.getWord(index))));
+      fPos.add(new Feature.POSFeature(getPosID(c.getPOS(index))));
+      fLabel.add(new Feature.ArcFeature(getLabelID(c.getLabel(index))));
 
       index = c.getRightChild(c.getRightChild(k));
-      fWord.add(getWordID(c.getWord(index)));
-      fPos.add(getPosID(c.getPOS(index)));
-      fLabel.add(getLabelID(c.getLabel(index)));
+      fWord.add(new Feature.WordFeature(getWordID(c.getWord(index))));
+      fPos.add(new Feature.POSFeature(getPosID(c.getPOS(index))));
+      fLabel.add(new Feature.ArcFeature(getLabelID(c.getLabel(index))));
     }
 
-    List<Integer> feature = new ArrayList<>(48);
-    feature.addAll(fWord);
-    feature.addAll(fPos);
-    feature.addAll(fLabel);
-    return feature;
+    List<Feature> features = new ArrayList<>(48);
+    features.addAll(fWord);
+    features.addAll(fPos);
+    features.addAll(fLabel);
+
+    if (featureEmbedding != null && !featureEmbedding.isEmpty()) {
+      Feature.loadEmbeddings(features, classifier.getE());
+      if (config.featureModeReplace) {
+        for (Feature feature : features) {
+          if (featureEmbedding.containsKey(feature.getId())){
+            feature.overWriteEmbedding(featureEmbedding.get(feature.getId()));
+          }
+        }
+      }
+      else {
+        for (Feature feature : fWord) {
+          if (featureEmbedding.containsKey(feature.getId())){
+            fAdditional.add(new Feature.AdditionalFeature(featureEmbedding.get(feature.getId())));
+          }
+        }
+        features.addAll(fAdditional);
+      }
+    }
+    return features;
   }
 
   private static final int POS_OFFSET = 18;
@@ -216,6 +235,7 @@ public class DependencyParser {
   private static final int STACK_OFFSET = 6;
   private static final int STACK_NUMBER = 6;
 
+  /*
   private int[] getFeatureArray(Configuration c) {
     int[] feature = new int[config.numTokens];  // positions 0-17 hold fWord, 18-35 hold fPos, 36-47 hold fLabel
 
@@ -267,6 +287,7 @@ public class DependencyParser {
 
     return feature;
   }
+  */
 
   public Dataset genTrainExamples(List<CoreMap> sents, List<DependencyTree> trees) {
     Dataset ret = new Dataset(config.numTokens, system.transitions.size());
@@ -289,7 +310,7 @@ public class DependencyParser {
 
         while (!system.isTerminal(c)) {
           String oracle = system.getOracle(c, trees.get(i));
-          List<Integer> feature = getFeatures(c);
+          List<Feature> feature = getFeatures(c, null);
           List<Integer> label = new ArrayList<>();
           for (int j = 0; j < system.transitions.size(); ++j) {
             String str = system.transitions.get(j);
@@ -300,7 +321,7 @@ public class DependencyParser {
 
           ret.addExample(feature, label);
           for (int j = 0; j < feature.size(); ++j)
-            tokPosCount.incrementCount(feature.get(j) * feature.size() + j);
+            tokPosCount.incrementCount(feature.get(j).getId() * feature.size() + j);
           system.apply(c, oracle);
         }
       }
@@ -383,10 +404,10 @@ public class DependencyParser {
     knownLabels.add(0, Config.NULL);
     generateIDs();
 
-    System.out.println(Config.SEPARATOR);
-    System.out.println("#Word: " + knownWords.size());
-    System.out.println("#POS:" + knownPos.size());
-    System.out.println("#Label: " + knownLabels.size());
+    System.err.println(Config.SEPARATOR);
+    System.err.println("#Word: " + knownWords.size());
+    System.err.println("#POS:" + knownPos.size());
+    System.err.println("#Label: " + knownLabels.size());
   }
 
   public void writeModelFile(String modelFile) {
@@ -505,7 +526,7 @@ public class DependencyParser {
   private void loadModelFile(String modelFile, boolean verbose) {
     Timing t = new Timing();
     try {
-      // System.err.println(Config.SEPARATOR);
+
       System.err.println("Loading depparse model file: " + modelFile + " ... ");
       String s;
       BufferedReader input = IOUtils.readerFromString(modelFile);
@@ -644,9 +665,8 @@ public class DependencyParser {
       embeddings = new double[nWords][dim];
       System.err.println("Embedding File " + embedFile + ": #Words = " + nWords + ", dim = " + dim);
 
-      //TODO: how if the embedding dim. does not match..?
       if (dim != config.embeddingSize)
-        System.err.println("ERROR: embedding dimension mismatch");
+          throw new IllegalArgumentException("The dimension of embedding file does not match config.embeddingSize");
 
       for (int i = 0; i < lines.size(); ++i) {
         splits = lines.get(i).split("\\s+");
@@ -835,51 +855,12 @@ public class DependencyParser {
    */
   private DependencyTree predictInner(CoreMap sentence) {
     int numTrans = system.transitions.size();
-    HashMap<Integer, double[]> s = new HashMap<>();
-    
-    if (config.featureMean || config.featurePOS) {
-      double[][] E = classifier.getE();
-
-      List<CoreLabel> labels = sentence.get(CoreAnnotations.TokensAnnotation.class);
-      int i = 0;
-      for (CoreLabel label : labels) {
-        int ctr = 0;
-        double[] embedding = new double[E[0].length];
-        Arrays.fill(embedding, 0.0);
-        if (config.featureMean) {
-          int j = 0;
-          try {
-            for (double d : Util.createMeanValueTweak(labels, i++, E, this)) {
-              embedding[j++] += d;
-            }
-            ctr++;
-          }
-          catch (Util.TweakException e) {}
-        }
-        if (config.featurePOS) {
-          int j = 0;
-          try {
-            for (double d : Util.createPOSWeightTweak(labels, i++, E, this)) {
-              embedding[j++] += d;
-            }
-            ctr++;
-          }
-          catch (Util.TweakException e) {}
-        }
-        if (ctr != 0) {
-          for (int j = 0; j < embedding.length; j++) {
-            embedding[j] /= ctr;
-          }
-          Integer id = getWordID(label.word());
-          s.put(id, embedding);
-        }
-      }
-    }
+    Map<Integer, double[]> featureEmbeddings = Util.getFeaturesEmbeddings(sentence, classifier, config, this);
 
     Configuration c = system.initialConfiguration(sentence);
     
     while (!system.isTerminal(c)) {
-      double[] scores = classifier.computeScores(getFeatureArray(c),s);
+      double[] scores = classifier.computeScores(getFeatures(c, featureEmbeddings));
 
       double optScore = Double.NEGATIVE_INFINITY;
       String optTrans = null;
@@ -1034,13 +1015,16 @@ public class DependencyParser {
 
     List<DependencyTree> predicted = testSents.stream().map(this::predictInner).collect(toList());
     Map<String, Double> result = system.evaluate(testSents, predicted, testTrees);
+    
+    double uasNoPunc = result.get("UASwoPunc");
     double lasNoPunc = result.get("LASwoPunc");
-    System.err.printf("UAS = %.4f%n", result.get("UASwoPunc"));
+    System.err.printf("UAS = %.4f%n", uasNoPunc);
     System.err.printf("LAS = %.4f%n", lasNoPunc);
+
     long millis = timer.stop();
     double wordspersec = numWords / (((double) millis) / 1000);
     double sentspersec = numSentences / (((double) millis) / 1000);
-    System.err.printf("%s tagged %d words in %d sentences in %.1fs at %.1f w/s, %.1f sent/s.%n",
+    System.err.printf("%s parsed %d words in %d sentences in %.1fs at %.1f w/s, %.1f sent/s.%n",
             StringUtils.getShortClassName(this), numWords, numSentences, millis / 1000.0, wordspersec, sentspersec);
 
     if (outFile != null) {
@@ -1153,7 +1137,13 @@ public class DependencyParser {
    *   <tr><td><tt>&#8209;textFile</tt></td><td>No</td><td>Yes (or <tt>testFile</tt>)</td><td>Path to a plaintext file containing sentences to be parsed.</td></tr>
    *   <tr><td><tt>&#8209;testFile</tt></td><td>No</td><td>Yes (or <tt>textFile</tt>)</td><td>Path to a test-set treebank in <a href="http://ilk.uvt.nl/conll/#dataformat">CoNLL-X format</a> for final evaluation of the parser.</td></tr>
    *   <tr><td><tt>&#8209;trainFile</tt></td><td>Yes</td><td>No</td><td>Path to a training treebank in <a href="http://ilk.uvt.nl/conll/#dataformat">CoNLL-X format</a></td></tr>
-   *   <tr><td><tt>&#8209;feature</tt></td><td>Optional</td><td>Optional</td><td>Select what semantic features to use. Is passed as a comma separated list with one or more features names. Currently available features: <i>mean</i> and <i>pos</i></td></tr>
+   * </table>
+   *
+   * Training/Parsing options:
+   * <table>
+   *   <tr><th>Option</th><th>Default</th><th>Description</th></tr>
+   *   <tr><td><tt>&#8209;featureMode</tt></td><td>additional</td><td>Determines the mode for features set by <tt>-featureType</tt>. Available modes:<ul><li><i>additional</i>, Adds set features as additional input features.<li><i>replace</i>, Replaces the word input features with the set features.</ul></td></tr>
+   *   <tr><td><tt>&#8209;featureType</tt></td><td>none</td><td>Select what additional semantic features to use. Is passed as a comma separated list with one or more feature names. Available features:<ul><li><i>mean</i>, For each word in the input adds a feature consisting of a mean value over the current sentence (excepting the current word).<li><i>pos</i>, For each word in the input adds feature consisting of a weighted mean value over selected POS-types from the current sentence (excepting the current word).</ul></td></tr>
    * </table>
    *
    * Training options:
@@ -1169,6 +1159,7 @@ public class DependencyParser {
    *   <tr><td><tt>&#8209;hiddenSize</tt></td><td>200</td><td>Dimensionality of hidden layer in neural network classifier</td></tr>
    *   <tr><td><tt>&#8209;initRange</tt></td><td>0.01</td><td>Bounds of range within which weight matrix elements should be initialized. Each element is drawn from a uniform distribution over the range <tt>[-initRange, initRange]</tt>.</td></tr>
    *   <tr><td><tt>&#8209;maxIter</tt></td><td>20000</td><td>Number of training iterations to complete before stopping and saving the final model.</td></tr>
+   *   <tr><td><tt>&#8209;wordEmbeddingBackPropagation</tt></td><td>true</td><td>The classifier supports back-propagation on the word embedding. This parameter allows to turn that feature off.</td></tr>
    *   <tr><td><tt>&#8209;numPreComputed</tt></td><td>100000</td><td>The parser pre-computes hidden-layer unit activations for particular inputs words at both training and testing time in order to speed up feedforward computation in the neural network. This parameter determines how many words for which we should compute hidden-layer activations.</td></tr>
    *   <tr><td><tt>&#8209;regParameter</tt></td><td>1e-8</td><td>Regularization parameter for training</td></tr>
    *   <tr><td><tt>&#8209;saveIntermediate</tt></td><td><tt>true</tt></td><td>If <tt>true</tt>, continually save the model version which gets the highest UAS value on the dev set. (Only valid if a development treebank is provided with <tt>&#8209;devFile</tt>.)</td></tr>
@@ -1189,6 +1180,10 @@ public class DependencyParser {
     Properties props = StringUtils.argsToProperties(args, numArgs);
     DependencyParser parser = new DependencyParser(props);
 
+    if (!parser.config.featureModeReplace && (parser.config.featureMean || parser.config.featurePOS)) {
+      Config.numTokens = 66;
+    }
+
     // Train with CoNLL-X data
     if (props.containsKey("trainFile"))
       parser.train(props.getProperty("trainFile"), props.getProperty("devFile"), props.getProperty("model"),
@@ -1199,7 +1194,6 @@ public class DependencyParser {
     if (props.containsKey("testFile")) {
       parser.loadModelFile(props.getProperty("model"));
       loaded = true;
-
       parser.testCoNLL(props.getProperty("testFile"), props.getProperty("outFile"));
     }
 
@@ -1234,5 +1228,4 @@ public class DependencyParser {
       parser.parseTextFile(input, output);
     }
   }
-
 }
