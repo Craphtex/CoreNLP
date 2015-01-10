@@ -205,29 +205,30 @@ class Util {
     printTreeStats("", trees);
   }
   
-  public static Map<Integer, double[]> getReplacementFeatures(CoreMap map, double[][] E, boolean mean, boolean pos, DependencyParser dp) {
+  public static Map<Integer, double[]> getFeaturesEmbeddings(CoreMap map, Classifier classifier, Config config, DependencyParser parser) {
     List<CoreLabel> labels = map.get(CoreAnnotations.TokensAnnotation.class);
+    double[][] E = classifier.getE();
     HashMap<Integer, double[]> sentence = new HashMap<>();
-    if (mean || pos) {
+    if (config.featureMean || config.featurePOS) {
       int i = 0;
       for (CoreLabel label : labels) {
         int ctr = 0;
         double[] embedding = new double[E[0].length];
         Arrays.fill(embedding, 0.0);
-        if (mean) {
+        if (config.featureMean) {
           int j = 0;
           try {
-            for (double d : Util.createMeanValueTweak(labels, i, E, dp)) {
+            for (double d : Util.createMeanValueTweak(labels, i, E, parser)) {
               embedding[j++] += d;
             }
             ctr++;
           }
           catch (Util.TweakException e) {}
         }
-        if (pos) {
+        if (config.featurePOS) {
           int j = 0;
           try {
-            for (double d : Util.createPOSWeightTweak(labels, i, E, dp)) {
+            for (double d : Util.createPOSWeightTweak(labels, i, E, parser)) {
               embedding[j++] += d;
             }
             ctr++;
@@ -238,7 +239,7 @@ class Util {
           for (int j = 0; j < embedding.length; j++) {
             embedding[j] /= ctr;
           }
-          Integer id = dp.getWordID(label.word());
+          Integer id = parser.getWordID(label.word());
           sentence.put(id, embedding);
         }
         i++;
@@ -247,7 +248,7 @@ class Util {
     return sentence;
   }
   
-  public static double[] createMeanValueTweak(List<CoreLabel> sentence, int current, double[][] embeddings, DependencyParser dp) throws TweakException{
+  public static double[] createMeanValueTweak(List<CoreLabel> sentence, int current, double[][] embeddings, DependencyParser parser) throws TweakException{
     if (sentence.size() == 1) throw new TweakException();
     double[] embedding = new double[embeddings[0].length];
     for (int i = 0; i < embedding.length; i++) {
@@ -258,7 +259,7 @@ class Util {
     int i = 0;
     for (CoreLabel label : sentence) {
       if (current != i++) {
-        index = dp.getWordID(label.word());
+        index = parser.getWordID(label.word());
         for (int j = 0; j < embedding.length; j++) {
           embedding[j] += embeddings[index][j];
         }
@@ -271,7 +272,7 @@ class Util {
     return embedding;
   }
   
-  public static double[] createPOSWeightTweak(List<CoreLabel> sentence, int current, double[][] embeddings, DependencyParser dp) throws TweakException{
+  public static double[] createPOSWeightTweak(List<CoreLabel> sentence, int current, double[][] embeddings, DependencyParser parser) throws TweakException{
     if (sentence.size() == 1) throw new TweakException();
     double[] embedding = new double[embeddings[0].length];
     for (int i = 0; i < embedding.length; i++) {
@@ -282,7 +283,7 @@ class Util {
     int i = 0;
     for (CoreLabel label : sentence) {
       if (current != i++) {
-        index = dp.getWordID(label.word());
+        index = parser.getWordID(label.word());
         for (int j = 0; j < embedding.length; j++) {
           embedding[j] += embeddings[index][j];
           // Proper way of doing this is to use a HashMap with weights.

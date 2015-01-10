@@ -155,11 +155,12 @@ public class DependencyParser {
     return labelIDs.get(s);
   }
 
-  public List<Feature> getFeatures(Configuration c, Map<Integer, double[]> s) {
+  public List<Feature> getFeatures(Configuration c, Map<Integer, double[]> featureEmbedding) {
     // Presize the arrays for very slight speed gain. Hardcoded, but so is the current feature list.
     List<Feature> fWord = new ArrayList<Feature>(18);
     List<Feature> fPos = new ArrayList<Feature>(18);
     List<Feature> fLabel = new ArrayList<Feature>(12);
+    List<Feature> fAdditional = new ArrayList<Feature>(18);
     for (int j = 2; j >= 0; --j) {
       int index = c.getStack(j);
       fWord.add(new Feature.WordFeature(getWordID(c.getWord(index))));
@@ -208,22 +209,22 @@ public class DependencyParser {
     features.addAll(fPos);
     features.addAll(fLabel);
 
-    Feature.loadEmbeddings(features, classifier.getE());
-    if (s != null) {
-      if (config.replaceWithMean || config.replaceWithPOS) {
+    if (featureEmbedding != null && !featureEmbedding.isEmpty()) {
+      Feature.loadEmbeddings(features, classifier.getE());
+      if (config.featureModeReplace) {
         for (Feature feature : features) {
-          if (s.containsKey(feature.getId())){
-            feature.overWriteEmbedding(s.get(feature.getId()));
+          if (featureEmbedding.containsKey(feature.getId())){
+            feature.overWriteEmbedding(featureEmbedding.get(feature.getId()));
           }
         }
       }
-      else if (config.featureMean || config.featurePOS) {
-   	    List<Feature> fAdditional = new ArrayList<Feature>(18);
+      else {
         for (Feature feature : fWord) {
-          if (s.containsKey(feature.getId())){
-            fAdditional.add(new Feature.AdditionalFeature(0));
+          if (featureEmbedding.containsKey(feature.getId())){
+            fAdditional.add(new Feature.AdditionalFeature(featureEmbedding.get(feature.getId())));
           }
         }
+        features.addAll(fAdditional);
       }
     }
     return features;
@@ -855,12 +856,12 @@ public class DependencyParser {
    */
   private DependencyTree predictInner(CoreMap sentence) {
     int numTrans = system.transitions.size();
-    Map<Integer, double[]> r = Util.getReplacementFeatures(sentence, classifier.getE(), config.replaceWithMean, config.replaceWithPOS, this);
+    Map<Integer, double[]> featureEmbeddings = Util.getFeaturesEmbeddings(sentence, classifier, config, this);
 
     Configuration c = system.initialConfiguration(sentence);
     
     while (!system.isTerminal(c)) {
-      double[] scores = classifier.computeScores(getFeatures(c, r));
+      double[] scores = classifier.computeScores(getFeatures(c, featureEmbeddings));
 
       double optScore = Double.NEGATIVE_INFINITY;
       String optTrans = null;
@@ -1139,8 +1140,8 @@ public class DependencyParser {
    * Training/Parsing options:
    * <table>
    *   <tr><th>Option</th><th>Default</th><th>Description</th></tr>
-   *   <tr><td><tt>&#8209;feature</tt></td><td>none</td><td>Select what additional semantic features to use. Is passed as a comma separated list with one or more feature names. Currently available features:<ul><li><i>mean</i>, For each word in the input add an additional input feature consisting of a mean value over the current sentence (excepting the current word).<li><i>pos</i>, For each word in the input add an additional input feature consisting of a weighted mean value over selected POS-types from the current sentence (excepting the current word).</ul></td></tr>
-   *   <tr><td><tt>&#8209;replace</tt></td><td>none</td><td>Select what semantic replacement features to use. Is passed as a comma separated list with one or more feature names. Currently available features:<ul><li><i>mean</i>, Replace the embedding for the current word with a mean value over the current sentence (excepting the current word).<li><i>pos</i>, Replace the embedding for the current word with a weighted mean value over selected POS-types from the current sentence (excepting the current word).</ul></td></tr>
+   *   <tr><td><tt>&#8209;featureMode</tt></td><td>additional</td><td>Determines the mode for features set by <tt>-featureType</tt>. Available modes:<ul><li><i>additional</i>, Adds set features as additional input features.<li><i>replace</i>, Replaces the word input features with the set features.</ul></td></tr>
+   *   <tr><td><tt>&#8209;featureType</tt></td><td>none</td><td>Select what additional semantic features to use. Is passed as a comma separated list with one or more feature names. Available features:<ul><li><i>mean</i>, For each word in the input adds a feature consisting of a mean value over the current sentence (excepting the current word).<li><i>pos</i>, For each word in the input adds feature consisting of a weighted mean value over selected POS-types from the current sentence (excepting the current word).</ul></td></tr>
    * </table>
    *
    * Training options:
@@ -1176,6 +1177,10 @@ public class DependencyParser {
   public static void main(String[] args) {
     Properties props = StringUtils.argsToProperties(args, numArgs);
     DependencyParser parser = new DependencyParser(props);
+
+    if (!parser.config.featureModeReplace && (parser.config.featureMean || parser.config.featurePOS)) {
+      Config.numTokens = 66;
+    }
 
     // Train with CoNLL-X data
     if (props.containsKey("trainFile"))

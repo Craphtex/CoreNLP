@@ -66,8 +66,9 @@ public abstract class Feature {
 
 	public static class AdditionalFeature extends Feature {
 
-		public AdditionalFeature(int id) {
-			super(id);
+		public AdditionalFeature(double[] embedding) {
+			super(0);
+			overWriteEmbedding(embedding);
 		}
 
 	}

@@ -125,7 +125,7 @@ public class Config
    */
   // TODO: we can figure this out automatically based on features used.
   // Should remove this option once we make feature templates / dynamic features
-  public static final int numTokens = 48;
+  public static int numTokens = 48;
 
   public boolean wordEmbeddingBackPropagation = true;
 
@@ -190,10 +190,10 @@ public class Config
    */
   public String tagger = MaxentTagger.DEFAULT_JAR_PATH;
 
-  public boolean replaceWithMean = false;
-  public boolean replaceWithPOS = false;
   public boolean featureMean = false;
   public boolean featurePOS = false;
+  
+  public boolean featureModeReplace = false;
 
   public Config(Properties properties) {
     setProperties(properties);
@@ -230,21 +230,18 @@ public class Config
                : language;
     tlp = Languages.getLanguageParams(language).treebankLanguagePack();
 
-    for (String s : PropertiesUtils.getStringArray(props, "feature")) {
-      if (s.equals("mean")) {
-    	featureMean = true;
-      }
-      else if (s.equals("pos")) {
-    	featurePOS = true;
-      }
+    String mode = "additional";
+    mode = PropertiesUtils.getString(props, "featureType", mode);
+    if (mode.equals("replace")) {
+      featureModeReplace = true;
     }
 
-    for (String s : PropertiesUtils.getStringArray(props, "replace")) {
+    for (String s : PropertiesUtils.getStringArray(props, "featureType")) {
       if (s.equals("mean")) {
-        replaceWithMean = true;
+        featureMean = true;
       }
       else if (s.equals("pos")) {
-        replaceWithPOS = true;
+        featurePOS = true;
       }
     }
   }

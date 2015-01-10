@@ -221,6 +221,8 @@ public class Classifier {
             for (int nodeIndex : ls)
               hidden[nodeIndex] += saved[id][nodeIndex];
           } else {
+            if (feature.getEmbedding() == null)
+              feature.loadEmbedding(E);
             for (int nodeIndex : ls) {
               for (int k = 0; k < config.embeddingSize; ++k)
                 //hidden[nodeIndex] += W1[nodeIndex][offset + k] * E[tok][k];
@@ -482,7 +484,7 @@ public class Classifier {
     for (Example ex : examples) {
       List<Feature> feature = ex.getFeature();
 
-      for (int j = 0; j < config.numTokens; j++) {
+      for (int j = 0; j < feature.size(); j++) {
         int tok = feature.get(j).getId();
         int index = tok * config.numTokens + j;
         if (preMap.containsKey(index))
