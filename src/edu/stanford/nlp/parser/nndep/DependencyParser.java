@@ -31,7 +31,6 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.Writer;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
@@ -156,59 +155,79 @@ public class DependencyParser {
     return labelIDs.get(s);
   }
 
-  public List<Integer> getFeatures(Configuration c) {
+  public List<Feature> getFeatures(Configuration c, Map<Integer, double[]> featureEmbedding) {
     // Presize the arrays for very slight speed gain. Hardcoded, but so is the current feature list.
-    List<Integer> fWord = new ArrayList<Integer>(18);
-    List<Integer> fPos = new ArrayList<Integer>(18);
-    List<Integer> fLabel = new ArrayList<Integer>(12);
+    List<Feature> fWord = new ArrayList<Feature>(18);
+    List<Feature> fPos = new ArrayList<Feature>(18);
+    List<Feature> fLabel = new ArrayList<Feature>(12);
+    List<Feature> fAdditional = new ArrayList<Feature>(18);
     for (int j = 2; j >= 0; --j) {
       int index = c.getStack(j);
-      fWord.add(getWordID(c.getWord(index)));
-      fPos.add(getPosID(c.getPOS(index)));
+      fWord.add(new Feature.WordFeature(getWordID(c.getWord(index))));
+      fPos.add(new Feature.POSFeature(getPosID(c.getPOS(index))));
     }
     for (int j = 0; j <= 2; ++j) {
       int index = c.getBuffer(j);
-      fWord.add(getWordID(c.getWord(index)));
-      fPos.add(getPosID(c.getPOS(index)));
+      fWord.add(new Feature.WordFeature(getWordID(c.getWord(index))));
+      fPos.add(new Feature.POSFeature(getPosID(c.getPOS(index))));
     }
     for (int j = 0; j <= 1; ++j) {
       int k = c.getStack(j);
       int index = c.getLeftChild(k);
-      fWord.add(getWordID(c.getWord(index)));
-      fPos.add(getPosID(c.getPOS(index)));
-      fLabel.add(getLabelID(c.getLabel(index)));
+      fWord.add(new Feature.WordFeature(getWordID(c.getWord(index))));
+      fPos.add(new Feature.POSFeature(getPosID(c.getPOS(index))));
+      fLabel.add(new Feature.ArcFeature(getLabelID(c.getLabel(index))));
 
       index = c.getRightChild(k);
-      fWord.add(getWordID(c.getWord(index)));
-      fPos.add(getPosID(c.getPOS(index)));
-      fLabel.add(getLabelID(c.getLabel(index)));
+      fWord.add(new Feature.WordFeature(getWordID(c.getWord(index))));
+      fPos.add(new Feature.POSFeature(getPosID(c.getPOS(index))));
+      fLabel.add(new Feature.ArcFeature(getLabelID(c.getLabel(index))));
 
       index = c.getLeftChild(k, 2);
-      fWord.add(getWordID(c.getWord(index)));
-      fPos.add(getPosID(c.getPOS(index)));
-      fLabel.add(getLabelID(c.getLabel(index)));
+      fWord.add(new Feature.WordFeature(getWordID(c.getWord(index))));
+      fPos.add(new Feature.POSFeature(getPosID(c.getPOS(index))));
+      fLabel.add(new Feature.ArcFeature(getLabelID(c.getLabel(index))));
 
       index = c.getRightChild(k, 2);
-      fWord.add(getWordID(c.getWord(index)));
-      fPos.add(getPosID(c.getPOS(index)));
-      fLabel.add(getLabelID(c.getLabel(index)));
+      fWord.add(new Feature.WordFeature(getWordID(c.getWord(index))));
+      fPos.add(new Feature.POSFeature(getPosID(c.getPOS(index))));
+      fLabel.add(new Feature.ArcFeature(getLabelID(c.getLabel(index))));
 
       index = c.getLeftChild(c.getLeftChild(k));
-      fWord.add(getWordID(c.getWord(index)));
-      fPos.add(getPosID(c.getPOS(index)));
-      fLabel.add(getLabelID(c.getLabel(index)));
+      fWord.add(new Feature.WordFeature(getWordID(c.getWord(index))));
+      fPos.add(new Feature.POSFeature(getPosID(c.getPOS(index))));
+      fLabel.add(new Feature.ArcFeature(getLabelID(c.getLabel(index))));
 
       index = c.getRightChild(c.getRightChild(k));
-      fWord.add(getWordID(c.getWord(index)));
-      fPos.add(getPosID(c.getPOS(index)));
-      fLabel.add(getLabelID(c.getLabel(index)));
+      fWord.add(new Feature.WordFeature(getWordID(c.getWord(index))));
+      fPos.add(new Feature.POSFeature(getPosID(c.getPOS(index))));
+      fLabel.add(new Feature.ArcFeature(getLabelID(c.getLabel(index))));
     }
 
-    List<Integer> feature = new ArrayList<>(48);
-    feature.addAll(fWord);
-    feature.addAll(fPos);
-    feature.addAll(fLabel);
-    return feature;
+    List<Feature> features = new ArrayList<>(48);
+    features.addAll(fWord);
+    features.addAll(fPos);
+    features.addAll(fLabel);
+
+    if (featureEmbedding != null && !featureEmbedding.isEmpty()) {
+      Feature.loadEmbeddings(features, classifier.getE());
+      if (config.featureModeReplace) {
+        for (Feature feature : features) {
+          if (featureEmbedding.containsKey(feature.getId())){
+            feature.overWriteEmbedding(featureEmbedding.get(feature.getId()));
+          }
+        }
+      }
+      else {
+        for (Feature feature : fWord) {
+          if (featureEmbedding.containsKey(feature.getId())){
+            fAdditional.add(new Feature.AdditionalFeature(featureEmbedding.get(feature.getId())));
+          }
+        }
+        features.addAll(fAdditional);
+      }
+    }
+    return features;
   }
 
   private static final int POS_OFFSET = 18;
@@ -216,6 +235,7 @@ public class DependencyParser {
   private static final int STACK_OFFSET = 6;
   private static final int STACK_NUMBER = 6;
 
+  /*
   private int[] getFeatureArray(Configuration c) {
     int[] feature = new int[config.numTokens];  // positions 0-17 hold fWord, 18-35 hold fPos, 36-47 hold fLabel
 
@@ -267,6 +287,7 @@ public class DependencyParser {
 
     return feature;
   }
+  */
 
   public Dataset genTrainExamples(List<CoreMap> sents, List<DependencyTree> trees) {
     Dataset ret = new Dataset(config.numTokens, system.transitions.size());
@@ -289,7 +310,7 @@ public class DependencyParser {
 
         while (!system.isTerminal(c)) {
           String oracle = system.getOracle(c, trees.get(i));
-          List<Integer> feature = getFeatures(c);
+          List<Feature> feature = getFeatures(c, null);
           List<Integer> label = new ArrayList<>();
           for (int j = 0; j < system.transitions.size(); ++j) {
             String str = system.transitions.get(j);
@@ -300,7 +321,7 @@ public class DependencyParser {
 
           ret.addExample(feature, label);
           for (int j = 0; j < feature.size(); ++j)
-            tokPosCount.incrementCount(feature.get(j) * feature.size() + j);
+            tokPosCount.incrementCount(feature.get(j).getId() * feature.size() + j);
           system.apply(c, oracle);
         }
       }
@@ -834,12 +855,12 @@ public class DependencyParser {
    */
   private DependencyTree predictInner(CoreMap sentence) {
     int numTrans = system.transitions.size();
-    Map<Integer, double[]> s = Util.getReplacementFeatures(sentence.get(CoreAnnotations.TokensAnnotation.class), classifier.getE(), config.featureReplaceWithMean, config.featureReplaceWithPOS, this);
+    Map<Integer, double[]> featureEmbeddings = Util.getFeaturesEmbeddings(sentence, classifier, config, this);
 
     Configuration c = system.initialConfiguration(sentence);
     
     while (!system.isTerminal(c)) {
-      double[] scores = classifier.computeScores(getFeatureArray(c),s);
+      double[] scores = classifier.computeScores(getFeatures(c, featureEmbeddings));
 
       double optScore = Double.NEGATIVE_INFINITY;
       String optTrans = null;
@@ -1121,7 +1142,8 @@ public class DependencyParser {
    * Training/Parsing options:
    * <table>
    *   <tr><th>Option</th><th>Default</th><th>Description</th></tr>
-   *   <tr><td><tt>&#8209;features</tt></td><td>none</td><td>Select what semantic features to use. Is passed as a comma separated list with one or more features names. Currently available features:<ul><li><i>rmean</i>, Replace the embedding for the current word with a mean value over the current sentence (excepting the current word).<li><i>pos</i>, Replace the embedding for the current word with a weighted mean value over selected POS-types from the current sentence (excepting the current word).</ul></td></tr>
+   *   <tr><td><tt>&#8209;featureMode</tt></td><td>additional</td><td>Determines the mode for features set by <tt>-featureType</tt>. Available modes:<ul><li><i>additional</i>, Adds set features as additional input features.<li><i>replace</i>, Replaces the word input features with the set features.</ul></td></tr>
+   *   <tr><td><tt>&#8209;featureType</tt></td><td>none</td><td>Select what additional semantic features to use. Is passed as a comma separated list with one or more feature names. Available features:<ul><li><i>mean</i>, For each word in the input adds a feature consisting of a mean value over the current sentence (excepting the current word).<li><i>pos</i>, For each word in the input adds feature consisting of a weighted mean value over selected POS-types from the current sentence (excepting the current word).</ul></td></tr>
    * </table>
    *
    * Training options:
@@ -1157,6 +1179,10 @@ public class DependencyParser {
   public static void main(String[] args) {
     Properties props = StringUtils.argsToProperties(args, numArgs);
     DependencyParser parser = new DependencyParser(props);
+
+    if (!parser.config.featureModeReplace && (parser.config.featureMean || parser.config.featurePOS)) {
+      Config.numTokens = 66;
+    }
 
     // Train with CoNLL-X data
     if (props.containsKey("trainFile"))
