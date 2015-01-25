@@ -231,7 +231,7 @@ public class Config
     tlp = Languages.getLanguageParams(language).treebankLanguagePack();
 
     String mode = "additional";
-    mode = PropertiesUtils.getString(props, "featureType", mode);
+    mode = PropertiesUtils.getString(props, "featureMode", mode);
     if (mode.equals("replace")) {
       featureModeReplace = true;
     }
@@ -278,5 +278,9 @@ public class Config
     System.err.printf("evalPerIter = %d%n", evalPerIter);
     System.err.printf("clearGradientsPerIter = %d%n", clearGradientsPerIter);
     System.err.printf("saveItermediate = %b%n", saveIntermediate);
+    System.err.printf("wordEmbeddingBackPropagation = %b%n", wordEmbeddingBackPropagation);
+    System.err.printf("featureMean = %b%n", featureMean);
+    System.err.printf("featurePOS = %b%n", featurePOS);
+    System.err.printf("featureModeReplace = %b%n", featureModeReplace);
   }
 }
