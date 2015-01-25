@@ -209,7 +209,7 @@ public class DependencyParser {
     features.addAll(fPos);
     features.addAll(fLabel);
 
-    if (featureEmbedding != null && !featureEmbedding.isEmpty()) {
+    if (featureEmbedding != null) {
       Feature.loadEmbeddings(features, classifier.getE());
       if (config.featureModeReplace) {
         for (Feature feature : features) {
